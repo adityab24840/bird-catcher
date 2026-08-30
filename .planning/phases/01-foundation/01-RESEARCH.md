@@ -803,22 +803,25 @@ export function IOSInstallBanner() {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Firebase project ID and custom authDomain**
    - What we know: The project requires a custom authDomain (not *.firebaseapp.com)
    - What's unclear: The actual Firebase project ID and the custom domain to use as authDomain are unknown — these must be created in the Firebase Console before any scaffolding work
    - Recommendation: Create the Firebase project first; note the project ID and hosting domain; set VITE_FIREBASE_AUTH_DOMAIN to that domain in .env.local before any sign-in testing
+   RESOLVED: Custom authDomain is set to the Firebase Hosting domain. Firebase project ID must be created in Firebase Console (manual step documented in 01-02 Task 1). No code-level blocker.
 
 2. **Auth trigger: v2 `beforeUserCreated` vs v1 `user().onCreate`**
    - What we know: Firebase Functions v2 has an identity module with `beforeUserCreated`; v1 has `user().onCreate` Auth trigger
    - What's unclear: Whether `beforeUserCreated` (a blocking trigger) vs `onCreate` (a background trigger) is better for this use case; blocking trigger runs before sign-in completes, which guarantees user doc exists at first app load but adds latency to sign-in
    - Recommendation: Use v1 `user().onCreate` pattern (background trigger, non-blocking) unless there is a specific need to guarantee doc existence before the first onAuthStateChanged fires; the existing project research uses this pattern
+   RESOLVED: Use v1 user().onCreate (background, non-blocking). v2 beforeUserCreated is acceptable fallback if v1 is unavailable; executor records which shipped.
 
 3. **Vite version to scaffold with**
    - What we know: npm registry shows vite@8.2.2; `npm create vite` would scaffold with Vite 8; vite-plugin-pwa@1.3.0 peer deps support `^3.1.0 || ... || ^8.0.0` [VERIFIED: npm registry]
    - What's unclear: The project STACK.md (researched today) specifies "Vite 6.x" — this appears to have been a conservative call; vite 8 is now stable and compatible
    - Recommendation: Scaffold with vite@8 (current stable); it is fully compatible with vite-plugin-pwa@1.3.0 per peer deps
+   RESOLVED: Use Vite 8.2.2 (current stable). vite-plugin-pwa peer deps confirmed compatible with ^8.0.0. STACK.md version (6.x) is outdated.
 
 ---
 

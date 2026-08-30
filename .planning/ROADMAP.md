@@ -32,7 +32,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. iOS user who has not installed the app sees an in-app visual guide (Share → Add to Home Screen) on first visit; the guide does not appear after the app is installed
   4. App loads from the home screen icon with no network connection and shows a graceful "You're offline" state rather than a blank screen
   5. Service worker registers exactly once — no infinite reload loop; FCM background messages and Workbox precaching coexist in the unified service worker
-**Plans**: TBD
+**Plans**: 4 plans
+- [ ] 01-01-PLAN.md — Scaffold + tooling (Vite 8, Tailwind v4, vite-plugin-pwa injectManifest, SW skeleton, manifest, Firebase project config)
+- [ ] 01-02-PLAN.md — Firebase config + Google Sign-In (custom authDomain) + Auth onCreate Cloud Function + auth routes
+- [ ] 01-03-PLAN.md — PWA shell: unified SW (FCM slot) + offline state + iOS install banner + installability
+- [ ] 01-04-PLAN.md — Playwright E2E auth fixture (signInWithCustomToken against Auth emulator)
 **UI hint**: yes
 
 ### Phase 2: Pair Management
@@ -106,7 +110,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | TBD | Not started | - |
+| 1. Foundation | 0/4 | Planned | - |
 | 2. Pair Management | TBD | Not started | - |
 | 3. Submissions + Privacy Layer | TBD | Not started | - |
 | 4. Reveal Mechanic | TBD | Not started | - |
