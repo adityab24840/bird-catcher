@@ -130,13 +130,13 @@
 | AUTH-02 | Phase 1 | Pending |
 | AUTH-03 | Phase 1 | Pending |
 | AUTH-04 | Phase 1 | Pending |
-| AUTH-05 | Phase 6 | Pending |
 | SEC-08 | Phase 1 | Pending |
 | PWA-01 | Phase 1 | Pending |
 | PWA-02 | Phase 1 | Pending |
 | PWA-03 | Phase 1 | Pending |
 | PWA-04 | Phase 1 | Pending |
 | PWA-05 | Phase 1 | Pending |
+| TEST-05 | Phase 1 | Pending |
 | PAIR-01 | Phase 2 | Pending |
 | PAIR-02 | Phase 2 | Pending |
 | PAIR-03 | Phase 2 | Pending |
@@ -156,13 +156,17 @@
 | SEC-02 | Phase 3 | Pending |
 | SEC-03 | Phase 3 | Pending |
 | SEC-04 | Phase 3 | Pending |
-| SEC-06 | Phase 6 | Pending |
+| TEST-01 | Phase 3 | Pending |
+| TEST-02 | Phase 3 | Pending |
 | REVL-01 | Phase 4 | Pending |
 | REVL-02 | Phase 4 | Pending |
 | REVL-03 | Phase 4 | Pending |
 | REVL-04 | Phase 4 | Pending |
 | REVL-05 | Phase 4 | Pending |
 | REVL-06 | Phase 4 | Pending |
+| TEST-03 | Phase 4 | Pending |
+| TEST-04 | Phase 4 | Pending |
+| TEST-06 | Phase 4 | Pending |
 | TIME-01 | Phase 5 | Pending |
 | TIME-02 | Phase 5 | Pending |
 | TIME-03 | Phase 5 | Pending |
@@ -174,19 +178,22 @@
 | NOTF-04 | Phase 5 | Pending |
 | NOTF-05 | Phase 5 | Pending |
 | NOTF-06 | Phase 5 | Pending |
-| TEST-01 | Phase 3 | Pending |
-| TEST-02 | Phase 3 | Pending |
-| TEST-03 | Phase 4 | Pending |
-| TEST-04 | Phase 4 | Pending |
-| TEST-05 | Phase 1 | Pending |
-| TEST-06 | Phase 4 | Pending |
 | AUTH-05 | Phase 6 | Pending |
+| SEC-06 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 46 total
-- Mapped to phases: 46
+- v1 requirements: 54 total
+- Mapped to phases: 54
 - Unmapped: 0 ✓
+
+**Phase breakdown:**
+- Phase 1 (Foundation): 11 requirements — AUTH-01–04, SEC-08, PWA-01–05, TEST-05
+- Phase 2 (Pair Management): 8 requirements — PAIR-01–06, SEC-05, SEC-07
+- Phase 3 (Submissions + Privacy Layer): 13 requirements — SUBM-01–07, SEC-01–04, TEST-01–02
+- Phase 4 (Reveal Mechanic): 9 requirements — REVL-01–06, TEST-03–04, TEST-06
+- Phase 5 (Timeline + Notifications): 11 requirements — TIME-01–05, NOTF-01–06
+- Phase 6 (Hardening + Production Deploy): 2 requirements — AUTH-05, SEC-06
 
 ---
 *Requirements defined: 2026-08-30*
-*Last updated: 2026-08-30 after initial definition*
+*Last updated: 2026-08-30 — traceability updated after roadmap creation; corrected coverage count from 46 to 54 (removed duplicate AUTH-05 entry; 54 unique v1 requirements confirmed)*
