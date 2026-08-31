@@ -14,8 +14,16 @@
  */
 
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
+import { initializeApp } from 'firebase/app'
+import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw'
 
 declare let self: ServiceWorkerGlobalScope
+declare const __FIREBASE_API_KEY__: string
+declare const __FIREBASE_AUTH_DOMAIN__: string
+declare const __FIREBASE_PROJECT_ID__: string
+declare const __FIREBASE_STORAGE_BUCKET__: string
+declare const __FIREBASE_MESSAGING_SENDER_ID__: string
+declare const __FIREBASE_APP_ID__: string
 
 // vite-plugin-pwa injectManifest replaces __WB_MANIFEST at build time with
 // the array of precache entries for the current build's hashed assets.
@@ -34,29 +42,23 @@ self.addEventListener('fetch', (event) => {
   // All other fetch events are handled by the Workbox routes registered above.
 })
 
-// ─── FCM INSERTION POINT ────────────────────────────────────────────────────
-// Phase 5 (Notifications) will add the Firebase Messaging initialization and
-// onBackgroundMessage handler here. The unified SW design is intentional —
-// adding a separate firebase-messaging-sw.js would create a dual-SW conflict.
-//
-// When ready in Phase 5, the addition will look like:
-//
-//   import { initializeApp } from 'firebase/app'
-//   import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw'
-//
-//   const app = initializeApp({
-//     apiKey: __FIREBASE_API_KEY__,
-//     authDomain: __FIREBASE_AUTH_DOMAIN__,
-//     projectId: __FIREBASE_PROJECT_ID__,
-//     storageBucket: __FIREBASE_STORAGE_BUCKET__,
-//     messagingSenderId: __FIREBASE_MESSAGING_SENDER_ID__,
-//     appId: __FIREBASE_APP_ID__,
-//   }, '[SW]')
-//
-//   onBackgroundMessage(getMessaging(app), (payload) => {
-//     self.registration.showNotification(payload.notification?.title ?? 'Reveal', {
-//       body: payload.notification?.body,
-//       icon: '/icons/icon-192.png',
-//     })
-//   })
-// ─── END FCM INSERTION POINT ────────────────────────────────────────────────
+// FCM: initialize Firebase app in SW scope using build-time constants
+// (__FIREBASE_*__ injected by Vite define block — import.meta.env unavailable in SW).
+const firebaseApp = initializeApp(
+  {
+    apiKey: __FIREBASE_API_KEY__,
+    authDomain: __FIREBASE_AUTH_DOMAIN__,
+    projectId: __FIREBASE_PROJECT_ID__,
+    storageBucket: __FIREBASE_STORAGE_BUCKET__,
+    messagingSenderId: __FIREBASE_MESSAGING_SENDER_ID__,
+    appId: __FIREBASE_APP_ID__,
+  },
+  '[SW]',
+)
+
+onBackgroundMessage(getMessaging(firebaseApp), (payload) => {
+  self.registration.showNotification(payload.notification?.title ?? 'Bird Eye', {
+    body: payload.notification?.body,
+    icon: '/icons/icon-192.png',
+  })
+})

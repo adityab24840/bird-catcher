@@ -14,6 +14,8 @@ import { Navigate, Routes, Route } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import LandingPage from './pages/LandingPage'
 import HomePage from './pages/HomePage'
+import OfflineBanner from './components/OfflineBanner'
+import IOSInstallBanner from './components/IOSInstallBanner'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -29,7 +31,10 @@ export default function App() {
   }
 
   return (
-    <Routes>
+    <>
+      <OfflineBanner />
+      <IOSInstallBanner />
+      <Routes>
       {/* / — LandingPage when signed out; redirect to /home when signed in */}
       <Route
         path="/"
@@ -41,6 +46,7 @@ export default function App() {
         path="/home"
         element={user ? <HomePage /> : <Navigate to="/" replace />}
       />
-    </Routes>
+      </Routes>
+    </>
   )
 }
