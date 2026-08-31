@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:prod": "VITE_FIREBASE_AUTH_EMULATOR_HOST= VITE_FIRESTORE_EMULATOR_HOST= tsc -b && VITE_FIREBASE_AUTH_EMULATOR_HOST= VITE_FIRESTORE_EMULATOR_HOST= vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",

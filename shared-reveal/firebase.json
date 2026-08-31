@@ -7,10 +7,12 @@
   },
   "functions": {
     "source": "functions",
-    "runtime": "nodejs22"
+    "runtime": "nodejs22",
+    "predeploy": ["cd functions && npm install && npm run build"]
   },
   "hosting": {
     "public": "dist",
+    "predeploy": ["npm run build:prod"],
     "ignore": [
       "firebase.json",
       "**/.*",
