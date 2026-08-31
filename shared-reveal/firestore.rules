@@ -38,6 +38,24 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Phase 3: Entry metadata — readable by both pair members; no client writes (SEC-02)
+    match /pairs/{pairId}/entries/{entryDate} {
+      allow read: if request.auth != null
+        && request.auth.uid in get(/databases/$(database)/documents/pairs/$(pairId)).data.members;
+      allow write: if false;
+
+      // Phase 3: Submission content — owner reads always; partner reads only after reveal (SEC-01, SUBM-05)
+      match /submissions/{uid} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow read: if request.auth != null
+          && request.auth.uid != uid
+          && request.auth.uid in get(/databases/$(database)/documents/pairs/$(pairId)).data.members
+          && get(/databases/$(database)/documents/pairs/$(pairId)/entries/$(entryDate)).data != null
+          && get(/databases/$(database)/documents/pairs/$(pairId)/entries/$(entryDate)).data.status == 'revealed';
+        allow write: if false;
+      }
+    }
+
     // All other paths are denied until later phases add explicit rules.
     // This deny-all catch prevents accidental over-permissioning.
     match /{document=**} {

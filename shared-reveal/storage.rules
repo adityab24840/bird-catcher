@@ -1,10 +1,29 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // Deny all by default
     match /{allPaths=**} {
-      // Phase 1: deny all Storage access from the client.
-      // Phase 3 (Submissions) will add rules for pairs/{pairId}/entries/{entryId}/{uid}/image.jpg
       allow read, write: if false;
+    }
+
+    // Phase 3: Pair photo uploads — scoped to pair member paths (SEC-03)
+    match /pairs/{pairId}/entries/{entryDate}/{uid}/{filename} {
+      // User can upload only to their own path within their pair
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && firestore.exists(/databases/(default)/documents/pairs/$(pairId))
+        && request.auth.uid in firestore.get(/databases/(default)/documents/pairs/$(pairId)).data.members;
+
+      // Owner reads own photo at any time; partner reads after reveal only
+      allow read: if request.auth != null && (
+        request.auth.uid == uid
+        || (
+          request.auth.uid in firestore.get(/databases/(default)/documents/pairs/$(pairId)).data.members
+          && firestore.exists(/databases/(default)/documents/pairs/$(pairId)/entries/$(entryDate))
+          && firestore.get(/databases/(default)/documents/pairs/$(pairId)/entries/$(entryDate)).data.status == 'revealed'
+        )
+      );
     }
   }
 }
