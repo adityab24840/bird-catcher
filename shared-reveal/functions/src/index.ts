@@ -1,60 +1,41 @@
-/**
- * Cloud Functions for Reveal.
- *
- * createUserDoc: Auth onCreate trigger that writes the users/{uid} Firestore document
- * server-side, using the Firebase Admin SDK. This avoids the client token-hydration
- * race condition that occurs when client code tries to write immediately after sign-in
- * (the Auth token may not be ready, and Security Rules would reject the write).
- *
- * Trigger variant used: v2 `beforeUserCreated` from firebase-functions/v2/identity.
- * This fires synchronously before the Firebase Auth user record is persisted,
- * ensuring the Firestore user document exists by the time the client receives the
- * sign-in credential (AUTH-02).
- *
- * If beforeUserCreated causes issues at deploy time (it is a blocking trigger
- * and requires enabling the Identity Platform API), switch to the v1-style
- * user().onCreate non-blocking trigger in firebase-functions/v1/auth — the
- * document shape is identical. See SUMMARY.md for which variant was deployed.
- */
 import { initializeApp } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
-import { user } from 'firebase-functions/v1/auth'
+import { beforeUserCreated } from 'firebase-functions/v2/identity'
 
-initializeApp()
-// Ensure Admin SDK uses Firestore emulator when running locally.
+// Must be set before initializeApp() so Admin SDK routes to Firestore emulator.
 if (process.env.FUNCTIONS_EMULATOR) {
   process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080'
 }
 
+initializeApp({ projectId: process.env.GCLOUD_PROJECT ?? 'birds-eye-c09ff' })
+
 /**
- * Writes the users/{uid} Firestore document when a new Firebase Auth user is created.
- * Uses v1 user().onCreate (non-blocking) — v2 beforeUserCreated blocks sign-in on
- * any function error, which is unsafe for emulator dev and unnecessary here.
+ * Writes the users/{uid} Firestore document before a new Firebase Auth user is persisted.
+ * Uses v2 beforeUserCreated (blocking trigger) — fires synchronously before the Auth user
+ * record is stored, ensuring the Firestore doc exists the moment the client gets the credential.
  *
- * Document shape (matches UserDoc type in src/types/index.ts):
- *   displayName: string | null
- *   email:       string | null
- *   photoURL:    string | null
- *   createdAt:   server timestamp
- *   updatedAt:   server timestamp
- *   pairId:      null
+ * Error handling: errors are caught and logged but NOT re-thrown. A non-throw means auth
+ * proceeds even if the Firestore write fails (better than blocking sign-in entirely).
  *
  * AUTH-02: user doc created server-side — never client-side (T-01-05).
  */
-export const createUserDoc = user().onCreate(async (userRecord) => {
+export const createUserDoc = beforeUserCreated(async (event) => {
+  const user = event.data
+  if (!user) return
+  console.log('[createUserDoc] handler invoked uid:', user.uid)
   try {
     const db = getFirestore()
-    await db.doc(`users/${userRecord.uid}`).set({
-      displayName: userRecord.displayName ?? null,
-      email: userRecord.email ?? null,
-      photoURL: userRecord.photoURL ?? null,
+    await db.doc(`users/${user.uid}`).set({
+      displayName: user.displayName ?? null,
+      email: user.email ?? null,
+      photoURL: user.photoURL ?? null,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       pairId: null,
     })
-    console.log('createUserDoc: wrote users/' + userRecord.uid)
+    console.log('[createUserDoc] wrote users/' + user.uid)
   } catch (err) {
-    console.error('createUserDoc FAILED:', err)
-    throw err
+    // Log but do not re-throw — blocking trigger must not fail sign-in on Firestore error.
+    console.error('[createUserDoc] FAILED:', err)
   }
 })
