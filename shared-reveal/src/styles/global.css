@@ -23,3 +23,18 @@
   /* Typography scale */
   --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji";
 }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-fadeUp {
+  animation: fadeUp 0.3s ease forwards;
+}
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease forwards;
+}

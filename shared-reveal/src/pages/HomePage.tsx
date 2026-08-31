@@ -7,7 +7,11 @@ import { db } from '../firebase/config'
 import type { UserDoc } from '../types/index'
 import { useEntry } from '../hooks/useEntry'
 import { useStreak } from '../hooks/useStreak'
-import { uploadSubmissionPhoto, submitEntryFn, revealAnywayFn } from '../services/submissions'
+import { uploadSubmissionPhoto, submitEntryFn, revealAnywayFn, compressImage } from '../services/submissions'
+
+function haptic(pattern: number | number[] = 10) {
+  try { navigator.vibrate?.(pattern) } catch {}
+}
 
 function Avatar({
   photoURL,
@@ -245,10 +249,12 @@ export default function HomePage() {
     try {
       if (selectedPhoto && userDoc?.pairId && user) {
         setUploadingPhoto(true)
-        photoURL = await uploadSubmissionPhoto(userDoc.pairId, entryDate, user.uid, selectedPhoto)
+        const compressed = await compressImage(selectedPhoto)
+        photoURL = await uploadSubmissionPhoto(userDoc.pairId, entryDate, user.uid, compressed)
         setUploadingPhoto(false)
       }
       await submitEntryFn({ entryDate, text: submissionText.trim() || null, photoURL })
+      haptic(15)
       setSelectedPhoto(null)
       setPhotoPreview(null)
       setSubmissionText('')
@@ -266,6 +272,7 @@ export default function HomePage() {
     setRevealError(null)
     try {
       await revealAnywayFn({ entryDate })
+      haptic([10, 80, 10])
     } catch (err: unknown) {
       setRevealError(err instanceof Error ? err.message : 'Failed to reveal')
     } finally {
@@ -286,7 +293,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ background: '#F2EDE4' }}>
+    <div className="flex flex-col min-h-screen animate-fadeUp" style={{ background: '#F2EDE4' }}>
       {/* Header */}
       <header
         className="px-5 pt-12 pb-4 flex items-start justify-between shrink-0"
@@ -349,7 +356,7 @@ export default function HomePage() {
         {/* State machine */}
         {docLoading || entryLoading ? (
           /* ── LOADING ── */
-          <div className="flex h-64 items-center justify-center">
+          <div className="flex h-64 items-center justify-center animate-fadeUp">
             <div
               className="h-7 w-7 rounded-full border-2 animate-spin"
               style={{ borderColor: '#E8F0E9', borderTopColor: '#2D5A3D' }}
@@ -357,7 +364,7 @@ export default function HomePage() {
           </div>
         ) : entryDoc?.status === 'revealed' ? (
           /* ── REVEALED ── */
-          <div className="flex flex-col items-center text-center gap-5 pt-6">
+          <div className="flex flex-col items-center text-center gap-5 pt-6 animate-fadeUp">
             <p className="text-lg font-bold tracking-wide" style={{ color: '#1A1A16' }}>
               ✦ TODAY'S ENTRY REVEALED
             </p>
@@ -398,7 +405,7 @@ export default function HomePage() {
           </div>
         ) : iSubmitted ? (
           /* ── WAITING ── */
-          <div className="flex flex-col items-center text-center pt-8 gap-6">
+          <div className="flex flex-col items-center text-center pt-8 gap-6 animate-fadeUp">
             {/* Submitted badge */}
             <div className="flex items-center gap-2">
               <span
@@ -484,7 +491,7 @@ export default function HomePage() {
           </div>
         ) : (
           /* ── SUBMIT FORM ── */
-          <div className="space-y-4 pt-2 pb-4">
+          <div className="space-y-4 pt-2 pb-4 animate-fadeUp">
             <p
               className="text-[10px] tracking-[0.2em] uppercase font-semibold"
               style={{ color: '#7A7268' }}
@@ -576,13 +583,30 @@ export default function HomePage() {
               {uploadingPhoto ? 'Uploading…' : submitting ? 'Sharing…' : 'Share'}
             </button>
 
-            {partnerSubmitted && (
-              <p
-                className="text-[11px] tracking-[0.1em] text-center uppercase font-medium"
-                style={{ color: '#8FAF8A' }}
+            {/* Partner already submitted — motivational preview */}
+            {partnerSubmitted && !iSubmitted && (
+              <div
+                className="mt-2 rounded-xl overflow-hidden border animate-fadeIn"
+                style={{ borderColor: '#C9BFA8' }}
               >
-                {partnerFirstName} already shared today ✓
-              </p>
+                <div
+                  className="flex items-center gap-2 px-3 py-2 border-b"
+                  style={{ background: '#F2EDE4', borderColor: '#C9BFA8' }}
+                >
+                  <Avatar photoURL={partnerDoc?.photoURL ?? null} name={partnerDoc?.displayName ?? null} size="sm" />
+                  <p className="text-[11px] tracking-[0.1em] uppercase font-semibold" style={{ color: '#2D5A3D' }}>
+                    {partnerFirstName} already shared something ✓
+                  </p>
+                </div>
+                <div
+                  className="px-4 py-5 flex items-center justify-center"
+                  style={{ background: '#F8F5F0' }}
+                >
+                  <p className="text-xs text-center" style={{ color: '#7A7268' }}>
+                    Share yours to reveal what they sent
+                  </p>
+                </div>
+              </div>
             )}
           </div>
         )}

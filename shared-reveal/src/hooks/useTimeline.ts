@@ -7,12 +7,14 @@ interface TimelineState {
   entries: EntryDoc[]
   loading: boolean
   error: string | null
+  refresh: () => void
 }
 
 export function useTimeline(pairId: string | null): TimelineState {
   const [entries, setEntries] = useState<EntryDoc[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
     if (!pairId) {
@@ -46,7 +48,7 @@ export function useTimeline(pairId: string | null): TimelineState {
     )
 
     return () => unsub()
-  }, [pairId])
+  }, [pairId, tick])
 
-  return { entries, loading, error }
+  return { entries, loading, error, refresh: () => setTick(t => t + 1) }
 }

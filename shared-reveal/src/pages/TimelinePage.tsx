@@ -3,6 +3,7 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../firebase/config'
 import { useTimeline } from '../hooks/useTimeline'
+import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { usePairId } from '../hooks/usePair'
 import { useAuth } from '../hooks/useAuth'
 import type { EntryDoc, SubmissionDoc, UserDoc } from '../types/index'
@@ -43,7 +44,7 @@ function SubmissionCard({
 
   return (
     <div
-      className="bg-white rounded-xl overflow-hidden border"
+      className="bg-white rounded-xl overflow-hidden border animate-fadeIn"
       style={{ borderColor: '#E8E2D4' }}
     >
       {/* Card header */}
@@ -134,7 +135,7 @@ function DaySection({
   const dateLabel = isToday ? 'Today' : `${day} ${month} ${year}`
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 animate-fadeUp">
       {/* Date separator */}
       <div className="flex items-center gap-3 px-1">
         <div className="flex-1 h-px" style={{ background: '#C9BFA8' }} />
@@ -320,8 +321,9 @@ function CalendarView({
 export default function TimelinePage() {
   const { user } = useAuth()
   const { pairId } = usePairId(user?.uid ?? null)
-  const { entries, loading, error } = useTimeline(pairId)
+  const { entries, loading, error, refresh } = useTimeline(pairId)
   const navigate = useNavigate()
+  const { pulling, distance } = usePullToRefresh(refresh)
 
   const [memberDocs, setMemberDocs] = useState<Record<string, UserDoc>>({})
   const [view, setView] = useState<'journal' | 'calendar'>('journal')
@@ -425,6 +427,14 @@ export default function TimelinePage() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto pb-6">
+        {pulling && (
+          <div
+            className="flex justify-center py-2 transition-all"
+            style={{ opacity: Math.min(distance / 64, 1) }}
+          >
+            <div className="h-5 w-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: '#2D5A3D', borderTopColor: 'transparent' }} />
+          </div>
+        )}
         {loading ? (
           <div className="flex h-64 items-center justify-center">
             <div
