@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, onSnapshot, orderBy, query, where, limit } from 'firebase/firestore'
+import { collection, onSnapshot, query, where, limit } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import type { EntryDoc } from '../types/index'
 
@@ -19,17 +19,20 @@ export function useTimeline(pairId: string | null): TimelineState {
       return
     }
 
+    // No orderBy — avoids composite index requirement. Sort client-side (max 20 docs).
     const q = query(
       collection(db, `pairs/${pairId}/entries`),
       where('status', '==', 'revealed'),
-      orderBy('date', 'desc'),
       limit(20)
     )
 
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setEntries(snap.docs.map((d) => d.data() as EntryDoc))
+        const sorted = snap.docs
+          .map((d) => d.data() as EntryDoc)
+          .sort((a, b) => b.date.localeCompare(a.date))
+        setEntries(sorted)
         setLoading(false)
       },
       (err) => {
