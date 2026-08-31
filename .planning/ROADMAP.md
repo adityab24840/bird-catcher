@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. App loads from the home screen icon with no network connection and shows a graceful "You're offline" state rather than a blank screen
   5. Service worker registers exactly once — no infinite reload loop; FCM background messages and Workbox precaching coexist in the unified service worker
 **Plans**: 4 plans
-- [ ] 01-01-PLAN.md — Scaffold + tooling (Vite 8, Tailwind v4, vite-plugin-pwa injectManifest, SW skeleton, manifest, Firebase project config)
+- [x] 01-01-PLAN.md — Scaffold + tooling (Vite 8, Tailwind v4, vite-plugin-pwa injectManifest, SW skeleton, manifest, Firebase project config)
 - [ ] 01-02-PLAN.md — Firebase config + Google Sign-In (custom authDomain) + Auth onCreate Cloud Function + auth routes
 - [ ] 01-03-PLAN.md — PWA shell: unified SW (FCM slot) + offline state + iOS install banner + installability
 - [ ] 01-04-PLAN.md — Playwright E2E auth fixture (signInWithCustomToken against Auth emulator)
@@ -110,14 +110,14 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/4 | Planned | - |
+| 1. Foundation | 1/4 | In Progress|  |
 | 2. Pair Management | TBD | Not started | - |
 | 3. Submissions + Privacy Layer | TBD | Not started | - |
 | 4. Reveal Mechanic | TBD | Not started | - |
 | 5. Timeline + Notifications | TBD | Not started | - |
 | 6. Hardening + Production Deploy | TBD | Not started | - |
 
----
+
 *Roadmap created: 2026-08-30*
 *Mode: mvp (vertical slices — each phase delivers an end-to-end user capability)*
 *Coverage: 54 v1 requirements mapped across 6 phases*
