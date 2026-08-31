@@ -72,9 +72,20 @@ function TimelineCard({
             <div key={sub.uid} className="flex flex-col">
               <div className="flex items-center gap-2 px-3 pt-3 pb-2">
                 <Avatar photoURL={member?.photoURL ?? null} name={member?.displayName ?? null} />
-                <span className="text-xs font-medium text-gray-600 truncate">
-                  {member?.displayName?.split(' ')[0] ?? '…'}
-                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-gray-600 truncate">
+                    {member?.displayName?.split(' ')[0] ?? '…'}
+                  </p>
+                  {sub.submittedAt && (
+                    <p className="text-[10px] text-gray-300">
+                      {sub.submittedAt.toDate().toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                      })}
+                    </p>
+                  )}
+                </div>
               </div>
               {sub.photoURL && (
                 <img
