@@ -11,6 +11,7 @@
     "predeploy": ["cd functions && npm install && npm run build"]
   },
   "hosting": {
+    "site": "birds-eye-c09ff",
     "public": "dist",
     "predeploy": ["npm run build:prod"],
     "ignore": [
