@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -60,5 +60,8 @@ export default defineConfig({
       process.env.VITE_FIREBASE_MESSAGING_SENDER_ID
     ),
     __FIREBASE_APP_ID__: JSON.stringify(process.env.VITE_FIREBASE_APP_ID),
+  },
+  test: {
+    include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
   },
 })

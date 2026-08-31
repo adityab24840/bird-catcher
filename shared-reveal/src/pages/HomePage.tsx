@@ -1,11 +1,10 @@
 /**
- * HomePage — authenticated home shell.
+ * HomePage — authenticated home shell for paired users.
  *
- * AUTH-02: reads the users/{uid} Firestore document to confirm server-side
- * document creation by the Cloud Function completed successfully.
+ * AUTH-02: reads the users/{uid} Firestore document (proves server-side doc creation).
  * AUTH-04: provides a sign-out button wired to signOutUser().
- * AUTH-03: if the user refreshes, useAuth restores the persisted session and
- * App.tsx routes them back here without a sign-in prompt.
+ * D-05: shows partner's display name and photo once pairId is non-null.
+ * Phase 3 will replace the partner card body with the submission UI.
  */
 import { useEffect, useState } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
@@ -18,12 +17,13 @@ export default function HomePage() {
   const { user } = useAuth()
   const [userDoc, setUserDoc] = useState<UserDoc | null>(null)
   const [docLoading, setDocLoading] = useState(true)
+  const [partnerId, setPartnerId] = useState<string | null>(null)
+  const [partnerDoc, setPartnerDoc] = useState<UserDoc | null>(null)
 
+  // Subscribe to own user doc — detects pairId becoming non-null after pair join
   useEffect(() => {
     if (!user) return
 
-    // Real-time listener — picks up the doc when onCreate Cloud Function writes it
-    // (non-blocking trigger fires ~100ms after sign-in, after getDoc would have missed it).
     const unsub = onSnapshot(
       doc(db, 'users', user.uid),
       (snap) => {
@@ -38,6 +38,44 @@ export default function HomePage() {
 
     return () => unsub()
   }, [user])
+
+  // Subscribe to pair doc to find partner UID, then subscribe to partner's user doc (D-05)
+  useEffect(() => {
+    if (!userDoc?.pairId) {
+      setPartnerId(null)
+      setPartnerDoc(null)
+      return
+    }
+
+    const pairRef = doc(db, 'pairs', userDoc.pairId)
+    const unsub = onSnapshot(pairRef, (snap) => {
+      if (!snap.exists()) return
+      const members: string[] = snap.data().members
+      const id = members.find((m) => m !== user?.uid) ?? null
+      setPartnerId(id)
+    })
+
+    return () => unsub()
+  }, [userDoc?.pairId, user?.uid])
+
+  useEffect(() => {
+    if (!partnerId) {
+      setPartnerDoc(null)
+      return
+    }
+
+    const unsub = onSnapshot(
+      doc(db, 'users', partnerId),
+      (snap) => {
+        setPartnerDoc(snap.exists() ? (snap.data() as UserDoc) : null)
+      },
+      (err) => {
+        console.error('[HomePage] partnerDoc listener error:', err)
+      },
+    )
+
+    return () => unsub()
+  }, [partnerId])
 
   async function handleSignOut() {
     try {
@@ -72,19 +110,27 @@ export default function HomePage() {
           <p className="text-sm text-gray-500">{user?.email ?? '—'}</p>
         </div>
 
-        {/* Firestore user doc status (proves AUTH-02) */}
-        <div className="mb-6 rounded-xl bg-gray-50 p-4 text-sm">
-          <p className="mb-1 font-medium text-gray-700">Firestore user document</p>
+        {/* Partner identity card (D-05) — Phase 3 replaces this with submission UI */}
+        <div className="mb-6 rounded-xl bg-gray-50 p-4 text-sm text-center">
           {docLoading ? (
             <p className="text-gray-400">Loading…</p>
-          ) : userDoc ? (
-            <div className="space-y-0.5 text-gray-500">
-              <p>pairId: {userDoc.pairId ?? 'null'}</p>
-              <p>createdAt: {userDoc.createdAt?.toDate?.()?.toLocaleString?.() ?? '—'}</p>
-            </div>
+          ) : userDoc?.pairId && partnerDoc ? (
+            <>
+              {partnerDoc.photoURL && (
+                <img
+                  src={partnerDoc.photoURL}
+                  className="mx-auto mb-2 h-12 w-12 rounded-full"
+                  alt="Partner"
+                />
+              )}
+              <p className="font-medium text-gray-900">{partnerDoc.displayName ?? '—'}</p>
+              <p className="mt-1 text-xs text-gray-500">You're connected</p>
+            </>
+          ) : userDoc?.pairId ? (
+            <p className="text-gray-400">Loading partner…</p>
           ) : (
-            <p className="text-amber-600">
-              No user doc yet — the Cloud Function may still be running or is not deployed.
+            <p className="text-amber-600 text-xs">
+              No pair yet — this page should only be reached after pairing.
             </p>
           )}
         </div>
