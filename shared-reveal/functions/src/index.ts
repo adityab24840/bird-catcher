@@ -39,13 +39,19 @@ initializeApp()
  * AUTH-02: user doc created server-side — never client-side (T-01-05).
  */
 export const createUserDoc = user().onCreate(async (userRecord) => {
-  const db = getFirestore()
-  await db.doc(`users/${userRecord.uid}`).set({
-    displayName: userRecord.displayName ?? null,
-    email: userRecord.email ?? null,
-    photoURL: userRecord.photoURL ?? null,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
-    pairId: null,
-  })
+  try {
+    const db = getFirestore()
+    await db.doc(`users/${userRecord.uid}`).set({
+      displayName: userRecord.displayName ?? null,
+      email: userRecord.email ?? null,
+      photoURL: userRecord.photoURL ?? null,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      pairId: null,
+    })
+    console.log('createUserDoc: wrote users/' + userRecord.uid)
+  } catch (err) {
+    console.error('createUserDoc FAILED:', err)
+    throw err
+  }
 })
