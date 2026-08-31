@@ -7,7 +7,7 @@ import { db } from '../firebase/config'
 import type { UserDoc } from '../types/index'
 import { useEntry } from '../hooks/useEntry'
 import { useStreak } from '../hooks/useStreak'
-import { uploadSubmissionPhoto, submitEntryFn, revealAnywayFn, compressImage } from '../services/submissions'
+import { uploadSubmissionPhoto, submitEntryFn, revealAnywayFn } from '../services/submissions'
 
 function haptic(pattern: number | number[] = 10) {
   try { navigator.vibrate?.(pattern) } catch {}
@@ -249,8 +249,7 @@ export default function HomePage() {
     try {
       if (selectedPhoto && userDoc?.pairId && user) {
         setUploadingPhoto(true)
-        const compressed = await compressImage(selectedPhoto)
-        photoURL = await uploadSubmissionPhoto(userDoc.pairId, entryDate, user.uid, compressed)
+        photoURL = await uploadSubmissionPhoto(userDoc.pairId, entryDate, user.uid, selectedPhoto)
         setUploadingPhoto(false)
       }
       await submitEntryFn({ entryDate, text: submissionText.trim() || null, photoURL })
@@ -577,10 +576,16 @@ export default function HomePage() {
             <button
               onClick={handleSubmit}
               disabled={submitting || uploadingPhoto}
-              className="w-full rounded-lg py-4 text-sm font-semibold text-white tracking-widest uppercase disabled:opacity-50 transition-all active:scale-[0.98]"
+              className="w-full rounded-lg py-4 text-sm font-semibold text-white tracking-widest uppercase disabled:opacity-50 transition-all active:scale-[0.98] overflow-hidden relative"
               style={{ background: '#2D5A3D' }}
             >
-              {uploadingPhoto ? 'Uploading…' : submitting ? 'Sharing…' : 'Share'}
+              {uploadingPhoto ? 'Uploading photo…' : submitting ? 'Sharing…' : 'Share'}
+              {uploadingPhoto && (
+                <span
+                  className="absolute bottom-0 left-0 h-0.5 animate-pulse"
+                  style={{ background: '#8FAF8A', width: '60%' }}
+                />
+              )}
             </button>
 
             {/* Partner already submitted — motivational preview */}

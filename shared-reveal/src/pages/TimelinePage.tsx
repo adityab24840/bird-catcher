@@ -28,11 +28,11 @@ function SubmissionCard({
   sub: SubmissionDoc
   member: UserDoc | undefined
 }) {
-  const timeLabel = sub.submittedAt
-    ? sub.submittedAt
-        .toDate()
-        .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  const ts = sub.updatedAt ?? sub.submittedAt
+  const timeLabel = ts
+    ? ts.toDate().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
     : ''
+  const isUpdated = !!(sub.updatedAt)
 
   const photos = sub.photoURLs?.length
     ? sub.photoURLs
@@ -58,10 +58,10 @@ function SubmissionCard({
             {member?.displayName?.split(' ')[0] ?? '…'}
           </p>
           <p
-            className="text-[10px] tracking-[0.1em] uppercase mt-0.5"
+            className="text-[10px] tracking-[0.1em] uppercase mt-0.5 flex items-center gap-1"
             style={{ color: '#7A7268' }}
           >
-            {timeLabel}
+            {timeLabel}{isUpdated && <span style={{ color: '#C9BFA8' }}>· updated</span>}
           </p>
         </div>
       </div>
