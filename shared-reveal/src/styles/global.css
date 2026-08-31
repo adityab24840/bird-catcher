@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind v4 CSS-first configuration.
+ * Design tokens are defined here via @theme.
+ * There is NO tailwind.config.ts — that file does not exist in v4.
+ * There is NO @tailwindcss/postcss — only the @tailwindcss/vite plugin is used.
+ */
+@theme {
+  /* Brand colors */
+  --color-brand-50: #faf5ff;
+  --color-brand-100: #f3e8ff;
+  --color-brand-200: #e9d5ff;
+  --color-brand-500: #a855f7;
+  --color-brand-600: #9333ea;
+  --color-brand-700: #7e22ce;
+  --color-brand-900: #581c87;
+
+  /* Neutral grays */
+  --color-surface: #ffffff;
+  --color-surface-muted: #f9fafb;
+
+  /* Typography scale */
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji";
+}
