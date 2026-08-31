@@ -293,7 +293,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen animate-fadeUp" style={{ background: '#F2EDE4' }}>
+    <div className="flex flex-col min-h-screen animate-fadeUp">
       {/* Header */}
       <header
         className="px-5 pt-12 pb-4 flex items-start justify-between shrink-0"

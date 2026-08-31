@@ -358,7 +358,7 @@ export default function TimelinePage() {
   }, [pairId, user])
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ background: '#F2EDE4' }}>
+    <div className="flex flex-col min-h-screen">
       {/* Header */}
       <header
         className="flex items-center justify-between px-5 pt-12 pb-4 shrink-0"
