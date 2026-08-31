@@ -20,8 +20,11 @@ import { initializeApp } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 import { user } from 'firebase-functions/v1/auth'
 
-// Initialize the Admin SDK once at module load.
 initializeApp()
+// Ensure Admin SDK uses Firestore emulator when running locally.
+if (process.env.FUNCTIONS_EMULATOR) {
+  process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080'
+}
 
 /**
  * Writes the users/{uid} Firestore document when a new Firebase Auth user is created.
