@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // Phase 1: deny all Storage access from the client.
+      // Phase 3 (Submissions) will add rules for pairs/{pairId}/entries/{entryId}/{uid}/image.jpg
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,13 @@
+node_modules
+dist
+.env
+.env.local
+.env.test
+firebase-debug.log
+functions/lib
+functions/node_modules
+coverage
+playwright-report
+test-results
+*.local
+service-account.json

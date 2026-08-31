@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid} {
+      // A user can read their own document only.
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // A user can create their own document (initial sign-in via Cloud Function,
+      // but allow client create as well for resilience — pairId starts null).
+      allow create: if request.auth != null && request.auth.uid == uid;
+
+      // A user can update their own document BUT cannot modify pairId from the client.
+      // pairId is only written by Cloud Functions (pair-join flow in Phase 2).
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['pairId']);
+
+      // Deletion is not permitted from the client.
+      allow delete: if false;
+    }
+
+    // All other paths are denied until later phases add explicit rules.
+    // This deny-all catch prevents accidental over-permissioning.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
