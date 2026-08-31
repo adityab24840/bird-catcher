@@ -62,7 +62,9 @@ const SubmitEntrySchema = z
 // App Check enforcement: emulator sets FUNCTIONS_EMULATOR=true and does not issue
 // real App Check tokens, so enforcing there always throws unauthenticated.
 // Enforce only in production (SEC-07).
-const callableOptions = process.env.FUNCTIONS_EMULATOR ? {} : { enforceAppCheck: true }
+const callableOptions = process.env.FUNCTIONS_EMULATOR
+  ? { cors: true }
+  : { enforceAppCheck: true }
 
 /**
  * Creates a new pair and returns a 6-char invite code.
