@@ -11,7 +11,7 @@
  * AUTH-03: because Firestore uses persistentLocalCache, the persisted session
  * is available immediately and onAuthStateChanged fires quickly on refresh.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { onAuthStateChanged, type User } from 'firebase/auth'
 import { auth } from '../firebase/config'
 import { completeRedirect } from '../services/auth'
@@ -24,23 +24,30 @@ interface AuthState {
 export function useAuth(): AuthState {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  // Guard: React StrictMode double-invokes effects in dev. getRedirectResult()
+  // can only be consumed once per redirect — second call returns null.
+  const redirectCaptured = useRef(false)
 
   useEffect(() => {
-    // AUTH-01: consume the redirect result once on mount.
-    // getRedirectResult is idempotent — safe to call even when no redirect is pending.
-    completeRedirect().catch((err) => {
-      // Errors here are usually network or misconfigured authDomain.
-      // Log but don't crash the app — onAuthStateChanged will still fire.
-      console.error('[useAuth] completeRedirect error:', err)
-    })
+    let unsubscribe: (() => void) | undefined
 
-    // Subscribe to auth state changes.
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser)
-      setLoading(false)
-    })
+    async function init() {
+      if (!redirectCaptured.current) {
+        redirectCaptured.current = true
+        await completeRedirect().catch((err) => {
+          console.error('[useAuth] completeRedirect error:', err)
+        })
+      }
 
-    return unsubscribe
+      unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+        setUser(firebaseUser)
+        setLoading(false)
+      })
+    }
+
+    init()
+
+    return () => { unsubscribe?.() }
   }, [])
 
   return { user, loading }
