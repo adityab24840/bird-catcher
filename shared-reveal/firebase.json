@@ -9,7 +9,12 @@
     "source": "functions",
     "runtime": "nodejs22",
     "predeploy": ["cd functions && npm install && npm run build"],
-    "ignore": ["**"]
+    "ignore": [
+      ".git",
+      "node_modules",
+      "src",
+      "*.local"
+    ]
   },
   "hosting": {
     "site": "birds-eye-c09ff",

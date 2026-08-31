@@ -19,7 +19,8 @@ import {
 } from 'firebase/firestore'
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions'
 import { getStorage, connectStorageEmulator } from 'firebase/storage'
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
+// App Check disabled until Phase 6 security hardening (reCAPTCHA site key not yet configured)
+// import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -41,20 +42,6 @@ export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({}),
 })
 
-// SEC-07: App Check — skip entirely when running against local emulators.
-// Emulators don't validate App Check tokens; initializing it anyway causes
-// CORS preflight failures because the emulator rejects the exchange before
-// setting Access-Control-Allow-Origin headers.
-if (!import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST) {
-  if (import.meta.env.VITE_APP_CHECK_DEBUG_TOKEN) {
-    // @ts-expect-error — self global required by Firebase App Check debug provider
-    self.FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APP_CHECK_DEBUG_TOKEN
-  }
-  initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY ?? 'placeholder'),
-    isTokenAutoRefreshEnabled: true,
-  })
-}
 
 export const functions = getFunctions(app)
 

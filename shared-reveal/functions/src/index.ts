@@ -59,12 +59,9 @@ const SubmitEntrySchema = z
     }
   })
 
-// App Check enforcement: emulator sets FUNCTIONS_EMULATOR=true and does not issue
-// real App Check tokens, so enforcing there always throws unauthenticated.
-// Enforce only in production (SEC-07).
-const callableOptions = process.env.FUNCTIONS_EMULATOR
-  ? { cors: true }
-  : { enforceAppCheck: true }
+// App Check disabled until Phase 6 (reCAPTCHA not yet configured).
+// cors:true required for emulator cross-origin requests from localhost dev server.
+const callableOptions = { cors: true }
 
 /**
  * Creates a new pair and returns a 6-char invite code.
@@ -131,8 +128,10 @@ export const joinPair = onCall(callableOptions, async (request) => {
   const uid = request.auth.uid
   const db = getFirestore()
 
+  console.log('[joinPair] querying pairs for inviteCode:', inviteCode, 'uid:', uid)
   // Query outside transaction — collection queries cannot run inside Firestore transactions (Pitfall 3)
   const pairsSnap = await db.collection('pairs').where('inviteCode', '==', inviteCode).limit(1).get()
+  console.log('[joinPair] query done, empty:', pairsSnap.empty)
   if (pairsSnap.empty) {
     throw new HttpsError('not-found', 'Invite code not found')
   }
@@ -269,3 +268,4 @@ export const submitEntry = onCall(callableOptions, async (request) => {
 
   return { entryDate, alreadySubmitted: false }
 })
+
