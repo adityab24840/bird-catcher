@@ -8,7 +8,7 @@
  * App.tsx routes them back here without a sign-in prompt.
  */
 import { useEffect, useState } from 'react'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, onSnapshot } from 'firebase/firestore'
 import { useAuth } from '../hooks/useAuth'
 import { signOutUser } from '../services/auth'
 import { db } from '../firebase/config'
@@ -22,20 +22,21 @@ export default function HomePage() {
   useEffect(() => {
     if (!user) return
 
-    async function fetchUserDoc() {
-      try {
-        const snap = await getDoc(doc(db, 'users', user!.uid))
-        if (snap.exists()) {
-          setUserDoc(snap.data() as UserDoc)
-        }
-      } catch (err) {
-        console.error('[HomePage] fetchUserDoc error:', err)
-      } finally {
+    // Real-time listener — picks up the doc when onCreate Cloud Function writes it
+    // (non-blocking trigger fires ~100ms after sign-in, after getDoc would have missed it).
+    const unsub = onSnapshot(
+      doc(db, 'users', user.uid),
+      (snap) => {
+        setUserDoc(snap.exists() ? (snap.data() as UserDoc) : null)
         setDocLoading(false)
-      }
-    }
+      },
+      (err) => {
+        console.error('[HomePage] userDoc listener error:', err)
+        setDocLoading(false)
+      },
+    )
 
-    void fetchUserDoc()
+    return () => unsub()
   }, [user])
 
   async function handleSignOut() {
