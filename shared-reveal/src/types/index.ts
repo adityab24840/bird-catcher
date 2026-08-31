@@ -34,10 +34,13 @@ export interface PairDoc {
 export interface EntryDoc {
   pairId: string
   date: string  // YYYY-MM-DD in user local timezone (D-02)
-  status: 'pending' | 'one_submitted'  // Phase 4 adds 'revealed'
+  status: 'pending' | 'one_submitted' | 'revealed'
   submittedMembers: string[]  // UIDs who have submitted
   createdAt: Timestamp
   updatedAt: Timestamp
+  revealedBy?: string  // uid of who triggered reveal, or 'auto'
+  revealReason?: 'auto' | 'manual'
+  revealedAt?: Timestamp
 }
 
 /**

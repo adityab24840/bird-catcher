@@ -68,3 +68,17 @@ export async function uploadSubmissionPhoto(
     throw err
   }
 }
+
+interface RevealAnywayInput {
+  entryDate: string
+}
+
+interface RevealAnywayResult {
+  entryDate: string
+  revealed: boolean
+}
+
+export const revealAnywayFn = httpsCallable<RevealAnywayInput, RevealAnywayResult>(
+  functions,
+  'revealAnyway'
+)
