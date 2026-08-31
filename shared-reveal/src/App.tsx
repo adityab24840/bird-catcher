@@ -17,6 +17,7 @@ import { usePairId } from './hooks/usePair'
 import LandingPage from './pages/LandingPage'
 import HomePage from './pages/HomePage'
 import PairSetupPage from './pages/PairSetupPage'
+import TimelinePage from './pages/TimelinePage'
 import OfflineBanner from './components/OfflineBanner'
 import IOSInstallBanner from './components/IOSInstallBanner'
 
@@ -63,6 +64,12 @@ export default function App() {
         <Route
           path="/home"
           element={user ? <HomePage /> : <Navigate to="/" replace />}
+        />
+
+        {/* /timeline — paired authenticated users only */}
+        <Route
+          path="/timeline"
+          element={user ? <TimelinePage /> : <Navigate to="/" replace />}
         />
       </Routes>
     </>

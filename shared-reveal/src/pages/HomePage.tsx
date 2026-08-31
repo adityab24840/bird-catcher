@@ -8,15 +8,17 @@
  */
 import { useEffect, useState } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { signOutUser } from '../services/auth'
 import { db } from '../firebase/config'
 import type { UserDoc } from '../types/index'
 import { useEntry } from '../hooks/useEntry'
-import { uploadSubmissionPhoto, submitEntryFn } from '../services/submissions'
+import { uploadSubmissionPhoto, submitEntryFn, revealAnywayFn } from '../services/submissions'
 
 export default function HomePage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [userDoc, setUserDoc] = useState<UserDoc | null>(null)
   const [docLoading, setDocLoading] = useState(true)
   const [partnerId, setPartnerId] = useState<string | null>(null)
@@ -27,6 +29,8 @@ export default function HomePage() {
   const [submitting, setSubmitting] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [revealing, setRevealing] = useState(false)
+  const [revealError, setRevealError] = useState<string | null>(null)
 
   // Subscribe to own user doc — detects pairId becoming non-null after pair join
   useEffect(() => {
@@ -117,6 +121,18 @@ export default function HomePage() {
     }
   }
 
+  async function handleRevealAnyway() {
+    setRevealing(true)
+    setRevealError(null)
+    try {
+      await revealAnywayFn({ entryDate })
+    } catch (err: unknown) {
+      setRevealError(err instanceof Error ? err.message : 'Failed to reveal')
+    } finally {
+      setRevealing(false)
+    }
+  }
+
   async function handleSignOut() {
     try {
       await signOutUser()
@@ -150,10 +166,23 @@ export default function HomePage() {
           <p className="text-sm text-gray-500">{user?.email ?? '—'}</p>
         </div>
 
-        {/* Submission state machine (Phase 3) */}
+        {/* Submission state machine (Phase 4) */}
         <div className="mb-6 rounded-xl bg-gray-50 p-4 text-sm text-center">
           {docLoading || entryLoading ? (
             <p className="text-gray-400">Loading…</p>
+          ) : entryDoc?.status === 'revealed' ? (
+            <div className="space-y-3 text-left">
+              <div className="text-center">
+                <p className="text-lg font-semibold text-gray-900 mb-1">Today&apos;s reveal ✨</p>
+                <p className="text-xs text-gray-500">{entryDate}</p>
+              </div>
+              <button
+                onClick={() => navigate('/timeline')}
+                className="w-full rounded-lg border border-purple-200 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50"
+              >
+                View in timeline →
+              </button>
+            </div>
           ) : entryDoc?.submittedMembers?.includes(user?.uid ?? '') ? (
             <div className="space-y-3">
               <div className="text-2xl">✓</div>
@@ -163,6 +192,16 @@ export default function HomePage() {
               ) : (
                 <p className="text-xs text-gray-500 mt-2">Waiting for them to share…</p>
               )}
+              <div className="mt-3">
+                <button
+                  onClick={handleRevealAnyway}
+                  disabled={revealing}
+                  className="w-full rounded-lg border border-gray-200 py-2 text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {revealing ? 'Revealing…' : 'Reveal anyway'}
+                </button>
+                {revealError && <p className="text-xs text-red-600 mt-1">{revealError}</p>}
+              </div>
             </div>
           ) : (
             <div className="space-y-3 text-left">
@@ -216,6 +255,16 @@ export default function HomePage() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Timeline nav */}
+        <div className="mb-3 text-center">
+          <button
+            onClick={() => navigate('/timeline')}
+            className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+          >
+            View timeline
+          </button>
         </div>
 
         {/* Sign out */}
