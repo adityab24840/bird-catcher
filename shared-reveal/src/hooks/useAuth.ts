@@ -13,12 +13,28 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import { onAuthStateChanged, type User } from 'firebase/auth'
-import { auth } from '../firebase/config'
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { auth, db } from '../firebase/config'
 import { completeRedirect } from '../services/auth'
 
 interface AuthState {
   user: User | null
   loading: boolean
+}
+
+async function ensureUserDoc(firebaseUser: User): Promise<void> {
+  const ref = doc(db, 'users', firebaseUser.uid)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) {
+    await setDoc(ref, {
+      displayName: firebaseUser.displayName ?? null,
+      email: firebaseUser.email ?? null,
+      photoURL: firebaseUser.photoURL ?? null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      pairId: null,
+    })
+  }
 }
 
 export function useAuth(): AuthState {
@@ -42,6 +58,7 @@ export function useAuth(): AuthState {
       unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
         setUser(firebaseUser)
         setLoading(false)
+        if (firebaseUser) void ensureUserDoc(firebaseUser)
       })
     }
 

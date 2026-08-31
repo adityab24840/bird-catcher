@@ -8,7 +8,8 @@
   "functions": {
     "source": "functions",
     "runtime": "nodejs22",
-    "predeploy": ["cd functions && npm install && npm run build"]
+    "predeploy": ["cd functions && npm install && npm run build"],
+    "ignore": ["**"]
   },
   "hosting": {
     "site": "birds-eye-c09ff",
