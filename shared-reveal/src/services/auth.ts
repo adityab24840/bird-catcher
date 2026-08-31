@@ -12,28 +12,35 @@
 import {
   GoogleAuthProvider,
   signInWithRedirect,
+  signInWithPopup,
   getRedirectResult,
   signOut,
   type User,
 } from 'firebase/auth'
 import { auth } from '../firebase/config'
 
+const USE_POPUP = Boolean(import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST)
+
 /**
- * Initiate Google Sign-In via redirect.
- * On iOS standalone and all other platforms, uses signInWithRedirect.
- * AUTH-01: the browser leaves the app, completes the Google flow, and returns.
+ * Initiate Google Sign-In.
+ * Production/iOS: signInWithRedirect (popup blocked in iOS standalone).
+ * Emulator local dev: signInWithPopup (emulator redirect state doesn't persist).
  */
 export async function signInWithGoogle(): Promise<void> {
   const provider = new GoogleAuthProvider()
-  await signInWithRedirect(auth, provider)
+  if (USE_POPUP) {
+    await signInWithPopup(auth, provider)
+  } else {
+    await signInWithRedirect(auth, provider)
+  }
 }
 
 /**
- * Capture the Firebase Auth credential returned after a signInWithRedirect flow.
- * Must be called on app load — the redirect result is only available once.
- * Returns the signed-in User, or null if no redirect result is pending.
+ * Capture the redirect result on app load (production only).
+ * In emulator mode signInWithPopup resolves immediately — no redirect to capture.
  */
 export async function completeRedirect(): Promise<User | null> {
+  if (USE_POPUP) return null
   const result = await getRedirectResult(auth)
   return result?.user ?? null
 }
