@@ -45,7 +45,7 @@ function SubmissionCard({
   return (
     <div
       className="bg-white rounded-xl overflow-hidden border animate-fadeIn"
-      style={{ borderColor: '#E8E2D4' }}
+      style={{ borderColor: '#E8E2D4', boxShadow: '0 1px 6px rgba(28,43,30,0.06)' }}
     >
       {/* Card header */}
       <div
@@ -73,7 +73,7 @@ function SubmissionCard({
           src={url}
           alt="submission"
           className="w-full object-cover border-b"
-          style={{ maxHeight: 320, borderColor: '#F0EBE0' }}
+          style={{ maxHeight: 320, borderColor: '#F0EBE0', display: 'block' }}
         />
       ))}
 
@@ -461,14 +461,23 @@ export default function TimelinePage() {
             </p>
           </div>
         ) : entries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
-            <p className="text-4xl">🪺</p>
-            <p className="font-medium text-sm" style={{ color: '#1A1A16' }}>
-              Nothing here yet
-            </p>
-            <p className="text-sm" style={{ color: '#7A7268' }}>
-              Entries appear once both of you share
-            </p>
+          <div className="flex flex-col items-center justify-center h-64 text-center gap-4 px-8 animate-fadeIn">
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+              <ellipse cx="32" cy="52" rx="18" ry="6" fill="#E8F0E9"/>
+              <path d="M32 52 Q28 38 22 26 Q18 18 22 10 Q26 4 32 8 Q38 4 42 10 Q46 18 42 26 Q36 38 32 52Z" fill="#2D5A3D" opacity="0.15"/>
+              <path d="M32 52 Q28 38 22 26 Q18 18 22 10" stroke="#2D5A3D" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
+              <path d="M32 52 Q36 38 42 26 Q46 18 42 10" stroke="#2D5A3D" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
+              <ellipse cx="27" cy="28" rx="7" ry="3" transform="rotate(-30 27 28)" fill="#2D5A3D" opacity="0.3"/>
+              <ellipse cx="37" cy="28" rx="7" ry="3" transform="rotate(30 37 28)" fill="#2D5A3D" opacity="0.3"/>
+              <ellipse cx="24" cy="20" rx="5" ry="2" transform="rotate(-20 24 20)" fill="#2D5A3D" opacity="0.25"/>
+              <ellipse cx="40" cy="20" rx="5" ry="2" transform="rotate(20 40 20)" fill="#2D5A3D" opacity="0.25"/>
+            </svg>
+            <div>
+              <p className="font-semibold text-sm" style={{ color: '#1A1A16' }}>Your journal is growing</p>
+              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: '#7A7268' }}>
+                Entries appear here once<br/>both of you share something
+              </p>
+            </div>
           </div>
         ) : view === 'calendar' ? (
           <CalendarView

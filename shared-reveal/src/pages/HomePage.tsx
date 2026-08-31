@@ -368,12 +368,18 @@ export default function HomePage() {
         ) : entryDoc?.status === 'revealed' ? (
           /* ── REVEALED ── */
           <div className="flex flex-col items-center text-center gap-5 pt-6 animate-fadeUp">
-            <p className="text-lg font-bold tracking-wide" style={{ color: '#1A1A16' }}>
-              ✦ TODAY'S ENTRY REVEALED
-            </p>
-            <p className="text-sm tracking-widest uppercase font-medium" style={{ color: '#7A7268' }}>
-              {todayLabel}
-            </p>
+            <div
+              className="w-full rounded-2xl px-5 py-6 text-center animate-popIn"
+              style={{ background: '#E8F0E9', border: '1px solid #8FAF8A' }}
+            >
+              <p className="text-3xl mb-2">🌿</p>
+              <p className="text-base font-bold tracking-[0.1em] uppercase" style={{ color: '#1C2B1E' }}>
+                Revealed
+              </p>
+              <p className="text-xs tracking-widest uppercase mt-1 font-medium" style={{ color: '#2D5A3D' }}>
+                {todayLabel}
+              </p>
+            </div>
             <button
               onClick={() => navigate('/timeline')}
               className="w-full rounded-lg py-4 text-sm font-semibold text-white tracking-widest uppercase"
@@ -424,15 +430,41 @@ export default function HomePage() {
             </div>
 
             {/* Partner avatar */}
-            <div className="relative">
-              <Avatar
-                photoURL={partnerDoc?.photoURL ?? null}
-                name={partnerDoc?.displayName ?? null}
-                size="lg"
-              />
+            <div className="relative" style={{ width: 88, height: 88 }}>
+              {/* Progress ring — lights up when partner submits */}
+              <svg
+                className="absolute inset-0 w-full h-full"
+                viewBox="0 0 88 88"
+                style={{ transform: 'rotate(-90deg)' }}
+              >
+                <circle
+                  cx="44" cy="44" r="38"
+                  fill="none"
+                  stroke="#E8F0E9"
+                  strokeWidth="3"
+                />
+                <circle
+                  cx="44" cy="44" r="38"
+                  fill="none"
+                  stroke="#2D5A3D"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeDasharray="238.76"
+                  strokeDashoffset={partnerSubmitted ? 0 : 238.76}
+                  style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                />
+              </svg>
+              {/* Avatar centered inside ring */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Avatar
+                  photoURL={partnerDoc?.photoURL ?? null}
+                  name={partnerDoc?.displayName ?? null}
+                  size="lg"
+                />
+              </div>
               {partnerSubmitted && (
                 <span
-                  className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-2 border-white flex items-center justify-center text-white text-[10px] font-bold"
+                  className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-2 border-white flex items-center justify-center text-white text-[10px] font-bold animate-popIn"
                   style={{ background: '#2D5A3D' }}
                 >
                   ✓
@@ -444,9 +476,18 @@ export default function HomePage() {
               <p className="text-base font-semibold" style={{ color: '#1A1A16' }}>
                 {partnerDoc?.displayName?.split(' ')[0] ?? '…'}
               </p>
-              <p className="text-sm mt-1" style={{ color: '#7A7268' }}>
-                {partnerSubmitted ? 'They shared too ✓' : 'Waiting for them…'}
-              </p>
+              {partnerSubmitted ? (
+                <p className="text-sm mt-1 animate-popIn" style={{ color: '#2D5A3D' }}>
+                  They shared too ✓
+                </p>
+              ) : (
+                <p className="text-sm mt-1 flex items-center justify-center gap-0.5" style={{ color: '#7A7268' }}>
+                  Waiting
+                  <span style={{ animation: 'blink 1.4s ease infinite', display: 'inline-block' }}>.</span>
+                  <span style={{ animation: 'blink 1.4s ease 0.2s infinite', display: 'inline-block' }}>.</span>
+                  <span style={{ animation: 'blink 1.4s ease 0.4s infinite', display: 'inline-block' }}>.</span>
+                </p>
+              )}
             </div>
 
             {/* Divider */}
@@ -580,8 +621,7 @@ export default function HomePage() {
             <button
               onClick={handleSubmit}
               disabled={submitting || uploadingPhoto}
-              className="w-full rounded-lg py-4 text-sm font-semibold text-white tracking-widest uppercase disabled:opacity-50 transition-all active:scale-[0.98] overflow-hidden relative"
-              style={{ background: '#2D5A3D' }}
+              className={`w-full rounded-lg py-4 text-sm font-semibold text-white tracking-widest uppercase disabled:opacity-50 transition-all active:scale-[0.98] overflow-hidden relative btn-shimmer ${uploadingPhoto ? 'active' : ''}`}
             >
               {uploadingPhoto ? 'Uploading photo…' : submitting ? 'Sharing…' : 'Share'}
               {uploadingPhoto && (
