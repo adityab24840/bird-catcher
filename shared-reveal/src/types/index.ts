@@ -25,3 +25,29 @@ export interface PairDoc {
   createdAt: Timestamp
   updatedAt: Timestamp
 }
+
+/**
+ * Entry document at pairs/{pairId}/entries/{entryDate}.
+ * Readable by both pair members at all times (metadata only — no submission content).
+ * Writable only via Cloud Functions (Admin SDK). Client writes blocked by security rules.
+ */
+export interface EntryDoc {
+  pairId: string
+  date: string  // YYYY-MM-DD in user local timezone (D-02)
+  status: 'pending' | 'one_submitted'  // Phase 4 adds 'revealed'
+  submittedMembers: string[]  // UIDs who have submitted
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+
+/**
+ * Submission document at pairs/{pairId}/entries/{entryDate}/submissions/{uid}.
+ * Readable by owner always; readable by partner only when entry status === 'revealed'.
+ * Not writable by clients — only Cloud Functions (Admin SDK) write this doc.
+ */
+export interface SubmissionDoc {
+  uid: string
+  photoURL: string | null  // Firebase Storage download URL, null if text-only submission
+  text: string | null  // max 500 chars enforced by CF schema, null if photo-only submission
+  submittedAt: Timestamp
+}

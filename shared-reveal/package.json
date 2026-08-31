@@ -8,11 +8,14 @@
     "build:prod": "VITE_FIREBASE_AUTH_EMULATOR_HOST= VITE_FIRESTORE_EMULATOR_HOST= tsc -b && VITE_FIREBASE_AUTH_EMULATOR_HOST= VITE_FIRESTORE_EMULATOR_HOST= vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:rules": "vitest run tests/rules/",
     "test:e2e": "playwright test",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "browser-image-compression": "^2.0.2",
     "firebase": "12.18.0",
+    "heic2any": "^0.0.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-router-dom": "^7.0.0",
