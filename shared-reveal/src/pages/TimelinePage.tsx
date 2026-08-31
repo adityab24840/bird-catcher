@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { doc, getDoc, onSnapshot } from 'firebase/firestore'
+import { doc, onSnapshot } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../firebase/config'
 import { useTimeline } from '../hooks/useTimeline'
@@ -100,32 +100,42 @@ function SubmissionCard({
 function DaySection({
   entry,
   pairId,
+  memberUids,
   memberDocs,
 }: {
   entry: EntryDoc
   pairId: string
+  memberUids: string[]
   memberDocs: Record<string, UserDoc>
 }) {
   const [submissions, setSubmissions] = useState<SubmissionDoc[]>([])
   const [subError, setSubError] = useState<string | null>(null)
 
   useEffect(() => {
-    const memberUids = Object.keys(memberDocs)
     if (!memberUids.length) return
 
-    Promise.all(
-      memberUids.map((uid) =>
-        getDoc(doc(db, `pairs/${pairId}/entries/${entry.date}/submissions/${uid}`))
-          .then((snap) => (snap.exists() ? (snap.data() as SubmissionDoc) : null))
-          .catch((err) => {
-            setSubError(err.message ?? 'Permission denied')
-            return null
-          }),
-      ),
-    ).then((results) =>
-      setSubmissions(results.filter((s): s is SubmissionDoc => s !== null)),
+    const subMap: Record<string, SubmissionDoc> = {}
+
+    const unsubs = memberUids.map((uid) =>
+      onSnapshot(
+        doc(db, `pairs/${pairId}/entries/${entry.date}/submissions/${uid}`),
+        (snap) => {
+          if (snap.exists()) {
+            subMap[uid] = snap.data() as SubmissionDoc
+          } else {
+            delete subMap[uid]
+          }
+          setSubmissions(memberUids.map((u) => subMap[u]).filter((s): s is SubmissionDoc => s !== null && s !== undefined))
+        },
+        (err) => {
+          console.error('[DaySection] submission read error:', err)
+          setSubError(err.message ?? 'Permission denied')
+        },
+      )
     )
-  }, [pairId, entry.date, memberDocs])
+
+    return () => unsubs.forEach((u) => u())
+  }, [pairId, entry.date, memberUids])
 
   const date = new Date(entry.date + 'T12:00:00')
   const isToday = entry.date === new Date().toLocaleDateString('en-CA')
@@ -178,6 +188,7 @@ function CalendarView({
   setCalMonth,
   pairId,
   memberDocs,
+  memberUids,
 }: {
   entries: EntryDoc[]
   onSelectDate: (date: string) => void
@@ -186,6 +197,7 @@ function CalendarView({
   setCalMonth: React.Dispatch<React.SetStateAction<Date>>
   pairId: string
   memberDocs: Record<string, UserDoc>
+  memberUids: string[]
 }) {
   const entryDates = new Set(entries.map((e) => e.date))
 
@@ -310,7 +322,7 @@ function CalendarView({
             <div className="flex-1 h-px" style={{ background: '#C9BFA8' }} />
           </div>
           {selectedEntry && (
-            <DaySection entry={selectedEntry} pairId={pairId} memberDocs={memberDocs} />
+            <DaySection entry={selectedEntry} pairId={pairId} memberUids={memberUids} memberDocs={memberDocs} />
           )}
         </div>
       )}
@@ -467,6 +479,7 @@ export default function TimelinePage() {
             setCalMonth={setCalMonth}
             pairId={pairId!}
             memberDocs={memberDocs}
+            memberUids={Object.keys(memberDocs)}
           />
         ) : (
           /* Journal view */
@@ -476,6 +489,7 @@ export default function TimelinePage() {
                 key={entry.date}
                 entry={entry}
                 pairId={pairId!}
+                memberUids={Object.keys(memberDocs)}
                 memberDocs={memberDocs}
               />
             ))}

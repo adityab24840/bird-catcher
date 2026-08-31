@@ -78,7 +78,7 @@ export async function uploadSubmissionPhoto(
     })
 
     // Step 4: Upload to Firebase Storage
-    const storagePath = `pairs/${pairId}/entries/${entryDate}/${uid}/photo.jpg`
+    const storagePath = `pairs/${pairId}/entries/${entryDate}/${uid}/${Date.now()}_photo.jpg`
     const storageRef = ref(storage, storagePath)
     const snapshot = await uploadBytes(storageRef, compressedFile, {
       contentType: 'image/jpeg',
