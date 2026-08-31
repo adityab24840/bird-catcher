@@ -30,6 +30,13 @@ declare const __FIREBASE_APP_ID__: string
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
+// Skip waiting immediately so new SW takes control without requiring all tabs to close.
+// Safe for this app — single-user PWA, no multi-tab coordination needed.
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim())
+})
+
 // CRITICAL: Exclude Firebase Storage from service worker interception.
 // Without this guard, `uploadBytesResumable` stalls at 0% progress on iOS Safari
 // because the SW intercepts the multipart upload protocol requests and breaks
