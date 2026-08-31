@@ -12,7 +12,7 @@ Reveal ships as six vertical-slice phases, each delivering an end-to-end user ca
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Auth + PWA shell + iOS auth fix (custom authDomain); app installable and sign-in works on all platforms including iOS standalone
+- [x] **Phase 1: Foundation** - Auth + PWA shell + iOS auth fix (custom authDomain); app installable and sign-in works on all platforms including iOS standalone
 - [ ] **Phase 2: Pair Management** - Two people connect into a private space via one-time invite code; pair cap enforced server-side
 - [ ] **Phase 3: Submissions + Privacy Layer** - Each person submits photo and/or text for the day; partner cannot read it — enforced at Firestore rules layer, emulator-verified
 - [ ] **Phase 4: Reveal Mechanic** - Entry auto-reveals when both submit (race-safe transaction); "Reveal Anyway" available with confirm dialog; reveal metadata recorded
@@ -34,9 +34,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Service worker registers exactly once — no infinite reload loop; FCM background messages and Workbox precaching coexist in the unified service worker
 **Plans**: 4 plans
 - [x] 01-01-PLAN.md — Scaffold + tooling (Vite 8, Tailwind v4, vite-plugin-pwa injectManifest, SW skeleton, manifest, Firebase project config)
-- [ ] 01-02-PLAN.md — Firebase config + Google Sign-In (custom authDomain) + Auth onCreate Cloud Function + auth routes
-- [ ] 01-03-PLAN.md — PWA shell: unified SW (FCM slot) + offline state + iOS install banner + installability
-- [ ] 01-04-PLAN.md — Playwright E2E auth fixture (signInWithCustomToken against Auth emulator)
+- [x] 01-02-PLAN.md — Firebase config + Google Sign-In (custom authDomain) + Auth onCreate Cloud Function + auth routes
+- [x] 01-03-PLAN.md — PWA shell: unified SW (FCM slot) + offline state + iOS install banner + installability
+- [x] 01-04-PLAN.md — Playwright E2E auth fixture (signInWithCustomToken against Auth emulator)
 **UI hint**: yes
 
 ### Phase 2: Pair Management
