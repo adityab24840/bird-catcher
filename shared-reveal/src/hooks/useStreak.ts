@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../firebase/config'
 
 interface StreakState {
-  myStreak: number      // consecutive days I missed submitting
-  partnerStreak: number // consecutive days partner missed submitting
+  myStreak: number
+  partnerStreak: number
 }
 
 function getPastDates(n: number): string[] {
@@ -28,18 +28,25 @@ export function useStreak(
     if (!pairId || !myUid) return
 
     const pastDates = getPastDates(7)
-    const cutoff = pastDates[pastDates.length - 1] // 7 days ago
 
-    const q = query(
-      collection(db, `pairs/${pairId}/entries`),
-      where('date', '>=', cutoff),
-      where('date', '<', pastDates[0]), // exclude today
-    )
+    Promise.all([
+      getDoc(doc(db, 'pairs', pairId)),
+      getDocs(
+        query(
+          collection(db, `pairs/${pairId}/entries`),
+          where('date', '>=', pastDates[pastDates.length - 1]),
+          where('date', '<', pastDates[0]),
+        )
+      ),
+    ])
+      .then(([pairSnap, entriesSnap]) => {
+        // Pair creation date — don't count days before the pair existed
+        const pairCreatedDate: string = pairSnap.exists()
+          ? pairSnap.data().createdAt.toDate().toLocaleDateString('en-CA')
+          : pastDates[0]
 
-    getDocs(q)
-      .then((snap) => {
         const entryMap = new Map<string, string[]>()
-        snap.docs.forEach((d) => {
+        entriesSnap.docs.forEach((d) => {
           const data = d.data()
           entryMap.set(data.date as string, data.submittedMembers as string[] ?? [])
         })
@@ -48,6 +55,8 @@ export function useStreak(
         let partnerStreak = 0
 
         for (const date of pastDates) {
+          // Stop counting once we reach the pair creation date or earlier
+          if (date <= pairCreatedDate) break
           const members = entryMap.get(date) ?? []
           if (!members.includes(myUid)) myStreak++
           else break
@@ -55,6 +64,7 @@ export function useStreak(
 
         if (partnerUid) {
           for (const date of pastDates) {
+            if (date <= pairCreatedDate) break
             const members = entryMap.get(date) ?? []
             if (!members.includes(partnerUid)) partnerStreak++
             else break
