@@ -1,0 +1,44 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-08-31T06:42:20.633Z",
+  "phase": "01",
+  "phase_name": "foundation",
+  "phase_dir": ".planning/phases/01-foundation",
+  "plan": 2,
+  "task": 5,
+  "total_tasks": 5,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": "wave-1-01-01", "name": "Scaffold project root + build toolchain", "status": "done", "commit": "merged via chore: merge executor worktree"},
+    {"id": "01-02-task-1", "name": "Firebase Console setup (human-action checkpoint)", "status": "done", "commit": "user-completed"},
+    {"id": "01-02-task-2", "name": "Firebase config, auth service, useAuth hook, types", "status": "done", "commit": "26436bd"},
+    {"id": "01-02-task-3", "name": "Auth onCreate Cloud Function", "status": "done", "commit": "1f850e7 (v1 user().onCreate after v2 beforeUserCreated failed)"},
+    {"id": "01-02-task-4", "name": "LandingPage, HomePage, route wiring", "status": "done", "commit": "72f0b34"}
+  ],
+  "remaining_tasks": [
+    {"id": "01-02-task-5", "name": "Verify Google Sign-In end-to-end (human-verify checkpoint)", "status": "in_progress", "progress": "sign-in routing works (user reaches /home), Cloud Function createUserDoc crashes in emulator — user doc not created"},
+    {"id": "01-03", "name": "PWA installable + offline + finalize service worker", "status": "not_started"},
+    {"id": "01-04", "name": "Playwright E2E auth harness", "status": "not_started"}
+  ],
+  "blockers": [
+    {
+      "description": "createUserDoc Cloud Function crashes in emulator with unhandled error — console.error never fires, suggesting crash is at module/runtime level before handler body executes",
+      "type": "technical",
+      "workaround": "Check FIRESTORE_EMULATOR_HOST env var in functions process; try FIRESTORE_EMULATOR_HOST explicitly set before initializeApp; or test AUTH-02 against real Firebase production after deploy"
+    }
+  ],
+  "human_actions_pending": [
+    {"action": "Fix createUserDoc emulator crash OR deploy to Firebase Hosting and verify user doc on production", "context": "AUTH-02 verification pending — sign-in works but user doc not created", "blocking": true},
+    {"action": "iOS Safari standalone sign-in test (SEC-08)", "context": "Requires real deployed URL birds-eye-c09ff.web.app", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "App renamed from Reveal to Bird Eye", "rationale": "User request mid-session", "phase": "01"},
+    {"decision": "signInWithPopup in emulator mode, signInWithRedirect in production", "rationale": "getRedirectResult returns null with Firebase auth emulator (known limitation); redirect essential for iOS standalone", "phase": "01"},
+    {"decision": "Switched from v2 beforeUserCreated to v1 user().onCreate", "rationale": "beforeUserCreated is a blocking trigger — when it crashes it blocks sign-in entirely; v1 onCreate is non-blocking", "phase": "01"},
+    {"decision": "authDomain set to birds-eye-c09ff.web.app (not .firebaseapp.com)", "rationale": "SEC-08 — iOS standalone requires custom hosting domain for auth iframe", "phase": "01"},
+    {"decision": "Emulator hosts commented out of .env.local for production testing; re-enabled for emulator mode", "rationale": "signInWithRedirect fails with emulator if emulator host not set; popup used instead", "phase": "01"}
+  ],
+  "uncommitted_files": [".planning/STATE.md", ".planning/config.json", "shared-reveal/.firebaserc"],
+  "next_action": "Debug createUserDoc emulator crash: check functions emulator logs for actual error (add console.log at very start of handler before try/catch), OR skip emulator and deploy to Firebase Hosting with 'firebase deploy --only hosting,functions' then test against production",
+  "context_notes": "Wave 1 (01-01) fully complete and verified. Wave 2 (01-02) code all merged and working except AUTH-02 (user doc via Cloud Function). Worktree for 01-02 was cleaned up. 01-02-SUMMARY.md exists (partial — written before task 5 approval). Wave 2 worktree branch deleted. Current git HEAD is main at commit 1cc51e8."
+}
