@@ -228,14 +228,18 @@ export default function HomePage() {
     const file = e.target.files?.[0]
     if (!file) return
     setSelectedPhoto(file)
-    const reader = new FileReader()
-    reader.onload = (evt) => setPhotoPreview(evt.target?.result as string)
-    reader.readAsDataURL(file)
+    setPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return URL.createObjectURL(file)
+    })
   }
 
   function clearPhoto() {
+    setPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
     setSelectedPhoto(null)
-    setPhotoPreview(null)
   }
 
   async function handleSubmit() {

@@ -1,8 +1,6 @@
 import { httpsCallable } from 'firebase/functions'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { functions, storage } from '../firebase/config'
-import imageCompression from 'browser-image-compression'
-
 export async function compressImage(file: File, maxPx = 1280, quality = 0.82): Promise<File> {
   return new Promise((resolve) => {
     const img = new Image()
@@ -70,12 +68,8 @@ export async function uploadSubmissionPhoto(
       fileToCompress = file
     }
 
-    // Step 3: Compress to <= 1 MB
-    const compressedFile = await imageCompression(fileToCompress, {
-      maxSizeMB: 1,
-      maxWidthOrHeight: 1920,
-      useWebWorker: true,
-    })
+    // Step 3: Canvas-based compress — no web worker, safe on iOS Safari PWA
+    const compressedFile = await compressImage(fileToCompress)
 
     // Step 4: Upload to Firebase Storage
     const storagePath = `pairs/${pairId}/entries/${entryDate}/${uid}/${Date.now()}_photo.jpg`
