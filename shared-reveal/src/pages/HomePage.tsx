@@ -18,11 +18,116 @@ function Avatar({
   name: string | null
   size?: 'sm' | 'md' | 'lg'
 }) {
-  const dims = size === 'sm' ? 'h-8 w-8 text-xs' : size === 'lg' ? 'h-20 w-20 text-2xl' : 'h-10 w-10 text-sm'
-  if (photoURL) return <img src={photoURL} alt={name ?? ''} className={`${dims} rounded-full object-cover`} />
+  const dims =
+    size === 'sm' ? 'h-8 w-8 text-xs' : size === 'lg' ? 'h-20 w-20 text-2xl' : 'h-10 w-10 text-sm'
+  if (photoURL)
+    return <img src={photoURL} alt={name ?? ''} className={`${dims} rounded-full object-cover`} />
   return (
-    <div className={`${dims} rounded-full bg-purple-100 flex items-center justify-center font-bold text-purple-500`}>
+    <div
+      className={`${dims} rounded-full flex items-center justify-center font-bold`}
+      style={{ background: '#E8F0E9', color: '#2D5A3D' }}
+    >
       {name?.[0]?.toUpperCase() ?? '?'}
+    </div>
+  )
+}
+
+function ResubmitForm({
+  fileInputRef,
+  photoPreview,
+  submissionText,
+  submitting,
+  uploadingPhoto,
+  submitError,
+  onPhotoSelect,
+  onClearPhoto,
+  onTextChange,
+  onCancel,
+  onSubmit,
+}: {
+  fileInputRef: React.RefObject<HTMLInputElement | null>
+  photoPreview: string | null
+  submissionText: string
+  submitting: boolean
+  uploadingPhoto: boolean
+  submitError: string | null
+  onPhotoSelect: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onClearPhoto: () => void
+  onTextChange: (val: string) => void
+  onCancel: () => void
+  onSubmit: () => void
+}) {
+  return (
+    <div className="w-full space-y-3 mt-2 text-left">
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={onPhotoSelect} className="hidden" />
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={submitting || uploadingPhoto}
+        className="relative w-full h-36 rounded-xl overflow-hidden flex items-center justify-center disabled:opacity-50 transition-all"
+        style={{
+          border: '1.5px dashed #C9BFA8',
+          background: '#F2EDE4',
+        }}
+      >
+        {photoPreview ? (
+          <>
+            <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClearPhoto()
+              }}
+              className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 text-white flex items-center justify-center text-sm leading-none"
+            >
+              ×
+            </button>
+          </>
+        ) : (
+          <div className="text-center select-none">
+            <div className="text-2xl mb-1">📷</div>
+            <p className="text-[11px] tracking-[0.1em] uppercase font-medium" style={{ color: '#7A7268' }}>
+              tap to add photo
+            </p>
+          </div>
+        )}
+      </button>
+      <textarea
+        value={submissionText}
+        onChange={(e) => onTextChange(e.target.value.slice(0, 500))}
+        placeholder="Add another thought..."
+        disabled={submitting || uploadingPhoto}
+        rows={2}
+        className="w-full rounded-xl px-4 py-3 text-[15px] resize-none focus:outline-none disabled:opacity-50"
+        style={{
+          border: '1px solid #C9BFA8',
+          background: '#FFFFFF',
+          color: '#1A1A16',
+        }}
+      />
+      {submitError && (
+        <p className="text-xs" style={{ color: '#B85C38' }}>
+          {submitError}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          className="flex-1 rounded-lg py-2.5 text-sm font-medium"
+          style={{ border: '1px solid #C9BFA8', color: '#7A7268' }}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onSubmit}
+          disabled={submitting || uploadingPhoto}
+          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+          style={{ background: '#2D5A3D' }}
+        >
+          {uploadingPhoto ? 'Uploading…' : submitting ? 'Sharing…' : 'Share'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -66,7 +171,10 @@ export default function HomePage() {
   }, [user])
 
   useEffect(() => {
-    if (!userDoc?.pairId) { setPartnerId(null); return }
+    if (!userDoc?.pairId) {
+      setPartnerId(null)
+      return
+    }
     const unsub = onSnapshot(doc(db, 'pairs', userDoc.pairId), (snap) => {
       if (!snap.exists()) return
       const members: string[] = snap.data().members
@@ -76,7 +184,10 @@ export default function HomePage() {
   }, [userDoc?.pairId, user?.uid])
 
   useEffect(() => {
-    if (!partnerId) { setPartnerDoc(null); return }
+    if (!partnerId) {
+      setPartnerDoc(null)
+      return
+    }
     const unsub = onSnapshot(doc(db, 'users', partnerId), (snap) => {
       setPartnerDoc(snap.exists() ? (snap.data() as UserDoc) : null)
     })
@@ -100,11 +211,13 @@ export default function HomePage() {
   const partnerFirstName = partnerDoc?.displayName?.split(' ')[0] ?? 'them'
 
   const todayLabel = entryDate
-    ? new Date(entryDate + 'T12:00:00').toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-      })
+    ? (() => {
+        const d = new Date(entryDate + 'T12:00:00')
+        const weekday = d.toLocaleDateString('en-US', { weekday: 'long' })
+        const day = String(d.getDate()).padStart(2, '0')
+        const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+        return `${weekday} · ${day} ${month}`
+      })()
     : ''
 
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -114,6 +227,11 @@ export default function HomePage() {
     const reader = new FileReader()
     reader.onload = (evt) => setPhotoPreview(evt.target?.result as string)
     reader.readAsDataURL(file)
+  }
+
+  function clearPhoto() {
+    setSelectedPhoto(null)
+    setPhotoPreview(null)
   }
 
   async function handleSubmit() {
@@ -143,8 +261,6 @@ export default function HomePage() {
     }
   }
 
-  // handleSignOut removed — replaced by inline sign-out in the confirmation sheet
-
   async function handleRevealAnyway() {
     setRevealing(true)
     setRevealError(null)
@@ -157,13 +273,37 @@ export default function HomePage() {
     }
   }
 
+  function cancelResubmit() {
+    setShowResubmitForm(false)
+    setSelectedPhoto(null)
+    setPhotoPreview(null)
+    setSubmissionText('')
+  }
+
+  async function submitAndCloseResubmit() {
+    await handleSubmit()
+    setShowResubmitForm(false)
+  }
+
   return (
-    <div className="flex flex-col min-h-screen bg-white">
-      {/* Top bar */}
-      <header className="flex items-center justify-between px-5 pt-12 pb-3 shrink-0">
+    <div className="flex flex-col min-h-screen" style={{ background: '#F2EDE4' }}>
+      {/* Header */}
+      <header
+        className="px-5 pt-12 pb-4 flex items-start justify-between shrink-0"
+        style={{ background: '#F2EDE4' }}
+      >
         <div>
-          <span className="text-lg font-bold tracking-tight text-gray-900">birds.eye</span>
-          {todayLabel && <p className="text-xs text-gray-400 mt-0.5">{todayLabel}</p>}
+          <p className="text-xs tracking-[0.3em] font-bold" style={{ color: '#1A1A16' }}>
+            BIRDS.EYE
+          </p>
+          {todayLabel && (
+            <p
+              className="text-[11px] tracking-[0.15em] mt-0.5 uppercase"
+              style={{ color: '#7A7268' }}
+            >
+              {todayLabel}
+            </p>
+          )}
         </div>
         <button onClick={() => setShowSignOutConfirm(true)} className="rounded-full" title="Account">
           <Avatar photoURL={user?.photoURL ?? null} name={user?.displayName ?? null} size="sm" />
@@ -171,203 +311,186 @@ export default function HomePage() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 px-5 overflow-y-auto">
-        {/* Dare streak banner */}
+      <main className="flex-1 px-5 overflow-y-auto pb-4">
+        {/* Dare banners */}
         {partnerStreak >= 3 && (
-          <div className="mb-4 rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 flex items-center gap-3">
-            <span className="text-2xl">🎯</span>
+          <div
+            className="mb-4 rounded-xl px-4 py-3 flex items-center gap-3 border"
+            style={{ background: '#E8F0E9', borderColor: '#8FAF8A' }}
+          >
+            <span className="text-xl">🌿</span>
             <div>
-              <p className="text-sm font-semibold text-amber-800">
+              <p className="text-sm font-semibold" style={{ color: '#2D5A3D' }}>
                 {partnerFirstName} missed {partnerStreak} days
               </p>
-              <p className="text-xs text-amber-600">You're owed a dare — make them do anything!</p>
+              <p className="text-xs mt-0.5" style={{ color: '#7A7268' }}>
+                You're owed a dare — make them do anything!
+              </p>
             </div>
           </div>
         )}
         {myStreak >= 3 && (
-          <div className="mb-4 rounded-2xl bg-rose-50 border border-rose-100 px-4 py-3 flex items-center gap-3">
-            <span className="text-2xl">😬</span>
+          <div
+            className="mb-4 rounded-xl px-4 py-3 flex items-center gap-3 border"
+            style={{ background: '#FAF0EB', borderColor: '#C9BFA8' }}
+          >
+            <span className="text-xl">🌱</span>
             <div>
-              <p className="text-sm font-semibold text-rose-800">
+              <p className="text-sm font-semibold" style={{ color: '#B85C38' }}>
                 You missed {myStreak} days
               </p>
-              <p className="text-xs text-rose-600">{partnerFirstName} gets to dare you — better check in!</p>
+              <p className="text-xs mt-0.5" style={{ color: '#7A7268' }}>
+                {partnerFirstName} gets to dare you — better check in!
+              </p>
             </div>
           </div>
         )}
+
+        {/* State machine */}
         {docLoading || entryLoading ? (
+          /* ── LOADING ── */
           <div className="flex h-64 items-center justify-center">
-            <div className="h-7 w-7 rounded-full border-2 border-purple-200 border-t-purple-500 animate-spin" />
+            <div
+              className="h-7 w-7 rounded-full border-2 animate-spin"
+              style={{ borderColor: '#E8F0E9', borderTopColor: '#2D5A3D' }}
+            />
           </div>
         ) : entryDoc?.status === 'revealed' ? (
           /* ── REVEALED ── */
           <div className="flex flex-col items-center text-center gap-5 pt-6">
-            <div className="text-6xl">✨</div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900">Reveal ready</p>
-              <p className="text-sm text-gray-400 mt-1">{todayLabel}</p>
-            </div>
+            <p className="text-lg font-bold tracking-wide" style={{ color: '#1A1A16' }}>
+              ✦ TODAY'S ENTRY REVEALED
+            </p>
+            <p className="text-sm tracking-widest uppercase font-medium" style={{ color: '#7A7268' }}>
+              {todayLabel}
+            </p>
             <button
               onClick={() => navigate('/timeline')}
-              className="rounded-2xl bg-purple-500 px-10 py-4 text-base font-semibold text-white shadow-lg shadow-purple-200 hover:bg-purple-600 active:scale-95 transition-transform"
+              className="w-full rounded-lg py-4 text-sm font-semibold text-white tracking-widest uppercase"
+              style={{ background: '#2D5A3D' }}
             >
-              Open →
+              Open Timeline
             </button>
+            <div className="w-full" style={{ borderTop: '1px solid #C9BFA8' }} />
             {!showResubmitForm ? (
               <button
                 onClick={() => setShowResubmitForm(true)}
-                className="w-full rounded-2xl border border-purple-100 py-3 text-sm font-medium text-purple-500 hover:bg-purple-50 transition-colors"
+                className="w-full rounded-lg py-3 text-sm font-medium border"
+                style={{ borderColor: '#2D5A3D', color: '#2D5A3D' }}
               >
                 + Add another thing
               </button>
             ) : (
-              <div className="w-full space-y-3 text-left">
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoSelect} className="hidden" />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={submitting || uploadingPhoto}
-                  className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-dashed border-purple-100 bg-purple-50 hover:bg-purple-100 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center"
-                >
-                  {photoPreview ? (
-                    <>
-                      <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                      <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedPhoto(null); setPhotoPreview(null) }}
-                        className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 text-white flex items-center justify-center text-sm">×</button>
-                    </>
-                  ) : (
-                    <div className="text-center select-none">
-                      <div className="text-3xl mb-1">📷</div>
-                      <p className="text-xs text-purple-400">Tap to add photo</p>
-                    </div>
-                  )}
-                </button>
-                <textarea
-                  value={submissionText}
-                  onChange={(e) => setSubmissionText(e.target.value.slice(0, 500))}
-                  placeholder="Add another thought..."
-                  disabled={submitting || uploadingPhoto}
-                  rows={2}
-                  className="w-full rounded-xl border border-purple-100 px-4 py-3 text-sm resize-none focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 disabled:opacity-50 placeholder:text-purple-200"
-                />
-                {submitError && <p className="text-xs text-red-500">{submitError}</p>}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { setShowResubmitForm(false); setSelectedPhoto(null); setPhotoPreview(null); setSubmissionText('') }}
-                    className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm text-gray-400 hover:bg-gray-50"
-                  >Cancel</button>
-                  <button
-                    onClick={async () => { await handleSubmit(); setShowResubmitForm(false) }}
-                    disabled={submitting || uploadingPhoto}
-                    className="flex-1 rounded-xl bg-purple-500 py-2.5 text-sm font-semibold text-white hover:bg-purple-600 disabled:opacity-50"
-                  >{uploadingPhoto ? 'Uploading…' : submitting ? 'Sharing…' : 'Share'}</button>
-                </div>
-              </div>
+              <ResubmitForm
+                fileInputRef={fileInputRef}
+                photoPreview={photoPreview}
+                submissionText={submissionText}
+                submitting={submitting}
+                uploadingPhoto={uploadingPhoto}
+                submitError={submitError}
+                onPhotoSelect={handlePhotoSelect}
+                onClearPhoto={clearPhoto}
+                onTextChange={setSubmissionText}
+                onCancel={cancelResubmit}
+                onSubmit={submitAndCloseResubmit}
+              />
             )}
           </div>
         ) : iSubmitted ? (
           /* ── WAITING ── */
-          <div className="flex flex-col items-center text-center pt-10 gap-6">
+          <div className="flex flex-col items-center text-center pt-8 gap-6">
+            {/* Submitted badge */}
+            <div className="flex items-center gap-2">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ background: '#2D5A3D' }}
+              />
+              <span
+                className="text-[10px] tracking-[0.2em] uppercase font-semibold"
+                style={{ color: '#2D5A3D' }}
+              >
+                Submitted
+              </span>
+            </div>
+
+            {/* Partner avatar */}
             <div className="relative">
-              <Avatar photoURL={partnerDoc?.photoURL ?? null} name={partnerDoc?.displayName ?? null} size="lg" />
+              <Avatar
+                photoURL={partnerDoc?.photoURL ?? null}
+                name={partnerDoc?.displayName ?? null}
+                size="lg"
+              />
               {partnerSubmitted && (
-                <span className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-green-400 border-2 border-white flex items-center justify-center text-white text-[10px] font-bold">
+                <span
+                  className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-2 border-white flex items-center justify-center text-white text-[10px] font-bold"
+                  style={{ background: '#2D5A3D' }}
+                >
                   ✓
                 </span>
               )}
             </div>
 
             <div>
-              {partnerSubmitted ? (
-                <>
-                  <p className="text-xl font-bold text-gray-900">Both shared</p>
-                  <p className="text-sm text-gray-400 mt-1">Waiting for reveal…</p>
-                </>
-              ) : (
-                <>
-                  <p className="text-xl font-bold text-gray-900">
-                    Waiting for {partnerFirstName}
-                  </p>
-                  <p className="text-sm text-gray-400 mt-1">You've shared your something for today</p>
-                </>
-              )}
+              <p className="text-base font-semibold" style={{ color: '#1A1A16' }}>
+                {partnerDoc?.displayName?.split(' ')[0] ?? '…'}
+              </p>
+              <p className="text-sm mt-1" style={{ color: '#7A7268' }}>
+                {partnerSubmitted ? 'They shared too ✓' : 'Waiting for them…'}
+              </p>
             </div>
 
-            <div className="w-full mt-2">
-              <button
-                onClick={handleRevealAnyway}
-                disabled={revealing}
-                className="w-full rounded-2xl border border-gray-200 py-3.5 text-sm text-gray-400 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-              >
-                {revealing ? 'Revealing…' : "Don't want to wait? Reveal now"}
-              </button>
-              {revealError && <p className="text-xs text-red-500 mt-2">{revealError}</p>}
+            {/* Divider */}
+            <div className="w-full" style={{ borderTop: '1px solid #C9BFA8' }} />
+
+            <div className="w-full space-y-2">
               {!showResubmitForm && (
                 <button
                   onClick={() => setShowResubmitForm(true)}
-                  className="w-full rounded-2xl border border-purple-100 py-3 text-sm font-medium text-purple-500 hover:bg-purple-50 transition-colors mt-2"
+                  className="w-full rounded-lg py-3 text-sm font-medium border"
+                  style={{ borderColor: '#2D5A3D', color: '#2D5A3D' }}
                 >
                   + Add another thing
                 </button>
               )}
+              <button
+                onClick={handleRevealAnyway}
+                disabled={revealing}
+                className="w-full rounded-lg py-3 text-sm font-medium border disabled:opacity-50"
+                style={{ borderColor: '#C9BFA8', color: '#7A7268' }}
+              >
+                {revealing ? 'Revealing…' : "Don't wait — reveal now"}
+              </button>
+              {revealError && (
+                <p className="text-xs" style={{ color: '#B85C38' }}>
+                  {revealError}
+                </p>
+              )}
               {showResubmitForm && (
-                <div className="w-full space-y-3 mt-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoSelect}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={submitting || uploadingPhoto}
-                    className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-dashed border-purple-100 bg-purple-50 hover:bg-purple-100 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center"
-                  >
-                    {photoPreview ? (
-                      <>
-                        <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                        <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedPhoto(null); setPhotoPreview(null) }}
-                          className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 text-white flex items-center justify-center text-sm">×</button>
-                      </>
-                    ) : (
-                      <div className="text-center select-none">
-                        <div className="text-3xl mb-1">📷</div>
-                        <p className="text-xs text-purple-400">Tap to add photo</p>
-                      </div>
-                    )}
-                  </button>
-                  <textarea
-                    value={submissionText}
-                    onChange={(e) => setSubmissionText(e.target.value.slice(0, 500))}
-                    placeholder="Add another thought..."
-                    disabled={submitting || uploadingPhoto}
-                    rows={2}
-                    className="w-full rounded-xl border border-purple-100 px-4 py-3 text-sm resize-none focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 disabled:opacity-50 placeholder:text-purple-200"
-                  />
-                  {submitError && <p className="text-xs text-red-500">{submitError}</p>}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => { setShowResubmitForm(false); setSelectedPhoto(null); setPhotoPreview(null); setSubmissionText('') }}
-                      className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm text-gray-400 hover:bg-gray-50"
-                    >Cancel</button>
-                    <button
-                      onClick={async () => { await handleSubmit(); setShowResubmitForm(false) }}
-                      disabled={submitting || uploadingPhoto}
-                      className="flex-1 rounded-xl bg-purple-500 py-2.5 text-sm font-semibold text-white hover:bg-purple-600 disabled:opacity-50"
-                    >{uploadingPhoto ? 'Uploading…' : submitting ? 'Sharing…' : 'Share'}</button>
-                  </div>
-                </div>
+                <ResubmitForm
+                  fileInputRef={fileInputRef}
+                  photoPreview={photoPreview}
+                  submissionText={submissionText}
+                  submitting={submitting}
+                  uploadingPhoto={uploadingPhoto}
+                  submitError={submitError}
+                  onPhotoSelect={handlePhotoSelect}
+                  onClearPhoto={clearPhoto}
+                  onTextChange={setSubmissionText}
+                  onCancel={cancelResubmit}
+                  onSubmit={submitAndCloseResubmit}
+                />
               )}
             </div>
           </div>
         ) : (
           /* ── SUBMIT FORM ── */
-          <div className="space-y-4 pt-1 pb-4">
-            <div>
-              <p className="text-xl font-bold text-gray-900">What reminded you?</p>
-            </div>
+          <div className="space-y-4 pt-2 pb-4">
+            <p
+              className="text-[10px] tracking-[0.2em] uppercase font-semibold"
+              style={{ color: '#7A7268' }}
+            >
+              What reminded you today?
+            </p>
 
             {/* Hidden file input */}
             <input
@@ -383,7 +506,8 @@ export default function HomePage() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={submitting || uploadingPhoto}
-              className="relative w-full h-52 rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 bg-gray-50 hover:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center"
+              className="relative w-full h-52 rounded-xl overflow-hidden flex items-center justify-center disabled:opacity-50 transition-all active:scale-[0.98]"
+              style={{ border: '1.5px dashed #C9BFA8', background: '#F2EDE4' }}
             >
               {photoPreview ? (
                 <>
@@ -392,8 +516,7 @@ export default function HomePage() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation()
-                      setSelectedPhoto(null)
-                      setPhotoPreview(null)
+                      clearPhoto()
                     }}
                     className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 text-white flex items-center justify-center text-sm leading-none"
                   >
@@ -402,93 +525,156 @@ export default function HomePage() {
                 </>
               ) : (
                 <div className="text-center select-none">
-                  <div className="text-4xl mb-2">📷</div>
-                  <p className="text-sm text-gray-400">Tap to add a photo</p>
-                  <p className="text-xs text-gray-300 mt-0.5">optional</p>
+                  <div className="text-3xl mb-2">📷</div>
+                  <p
+                    className="text-[11px] tracking-[0.1em] uppercase font-medium"
+                    style={{ color: '#7A7268' }}
+                  >
+                    tap to add photo
+                  </p>
+                  <p className="text-[10px] mt-0.5" style={{ color: '#C9BFA8' }}>
+                    optional
+                  </p>
                 </div>
               )}
             </button>
 
-            {/* Text */}
+            {/* Textarea */}
             <div>
               <textarea
                 value={submissionText}
                 onChange={(e) => setSubmissionText(e.target.value.slice(0, 500))}
-                placeholder="What reminded you of them today?"
+                placeholder="write something..."
                 disabled={submitting || uploadingPhoto}
                 rows={3}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm resize-none focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 disabled:opacity-50 placeholder:text-gray-300"
+                className="w-full rounded-xl px-4 py-3 text-[15px] leading-relaxed resize-none focus:outline-none disabled:opacity-50"
+                style={{
+                  border: '1px solid #C9BFA8',
+                  background: '#FFFFFF',
+                  color: '#1A1A16',
+                }}
               />
               {submissionText.length > 0 && (
-                <p className="text-xs text-gray-300 text-right mt-1">{submissionText.length}/500</p>
+                <p className="text-[10px] text-right mt-1" style={{ color: '#C9BFA8' }}>
+                  {submissionText.length}/500
+                </p>
               )}
             </div>
 
-            {submitError && <p className="text-xs text-red-500">{submitError}</p>}
+            {submitError && (
+              <p className="text-xs" style={{ color: '#B85C38' }}>
+                {submitError}
+              </p>
+            )}
 
             <button
               onClick={handleSubmit}
               disabled={submitting || uploadingPhoto}
-              className="w-full rounded-2xl bg-purple-500 py-4 text-base font-semibold text-white shadow-lg shadow-purple-200 hover:bg-purple-600 active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full rounded-lg py-4 text-sm font-semibold text-white tracking-widest uppercase disabled:opacity-50 transition-all active:scale-[0.98]"
+              style={{ background: '#2D5A3D' }}
             >
               {uploadingPhoto ? 'Uploading…' : submitting ? 'Sharing…' : 'Share'}
             </button>
 
             {partnerSubmitted && (
-              <p className="text-xs text-green-500 text-center">
-                {partnerFirstName} already shared something today ✓
+              <p
+                className="text-[11px] tracking-[0.1em] text-center uppercase font-medium"
+                style={{ color: '#8FAF8A' }}
+              >
+                {partnerFirstName} already shared today ✓
               </p>
             )}
           </div>
         )}
       </main>
 
-      {/* Bottom tab bar */}
-      <nav className="shrink-0 border-t border-gray-100 flex pb-8 bg-white">
+      {/* Bottom nav */}
+      <nav
+        className="shrink-0 flex pb-8"
+        style={{ background: '#1C2B1E' }}
+      >
         <button
           onClick={() => navigate('/home')}
-          className="flex-1 flex flex-col items-center pt-3 pb-1 gap-1 text-purple-500"
+          className="flex-1 flex flex-col items-center pt-3 pb-1 gap-1"
+          style={{ color: '#8FAF8A' }}
         >
           <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-            <path d="M3 12L12 3l9 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M5 10v9a1 1 0 001 1h4v-4h4v4h4a1 1 0 001-1v-9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M3 12L12 3l9 9"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M5 10v9a1 1 0 001 1h4v-4h4v4h4a1 1 0 001-1v-9"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
-          <span className="text-[10px] font-medium">Today</span>
+          <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Today</span>
         </button>
         <button
           onClick={() => navigate('/timeline')}
-          className="flex-1 flex flex-col items-center pt-3 pb-1 gap-1 text-gray-300"
+          className="flex-1 flex flex-col items-center pt-3 pb-1 gap-1"
+          style={{ color: '#4A5C4A' }}
         >
           <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
             <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" />
             <path d="M3 9h18" stroke="currentColor" strokeWidth="1.8" />
             <path d="M8 2v4M16 2v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
-          <span className="text-[10px] font-medium">Timeline</span>
+          <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Timeline</span>
         </button>
       </nav>
 
       {/* Sign-out confirmation sheet */}
       {showSignOutConfirm && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/30" onClick={() => setShowSignOutConfirm(false)}>
-          <div className="rounded-t-3xl bg-white px-5 pb-10 pt-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-gray-200" />
-            <div className="mb-4 flex items-center gap-3">
-              <Avatar photoURL={user?.photoURL ?? null} name={user?.displayName ?? null} size="md" />
+        <div
+          className="fixed inset-0 z-50 flex flex-col justify-end"
+          style={{ background: 'rgba(0,0,0,0.35)' }}
+          onClick={() => setShowSignOutConfirm(false)}
+        >
+          <div
+            className="rounded-t-3xl px-5 pb-10 pt-5 shadow-xl"
+            style={{ background: '#FFFFFF' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="mx-auto mb-5 h-1 w-10 rounded-full"
+              style={{ background: '#E8E2D4' }}
+            />
+            <div className="mb-5 flex items-center gap-3">
+              <Avatar
+                photoURL={user?.photoURL ?? null}
+                name={user?.displayName ?? null}
+                size="md"
+              />
               <div>
-                <p className="font-semibold text-gray-900">{user?.displayName ?? '—'}</p>
-                <p className="text-xs text-gray-400">{user?.email ?? ''}</p>
+                <p className="font-semibold text-sm" style={{ color: '#1A1A16' }}>
+                  {user?.displayName ?? '—'}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#7A7268' }}>
+                  {user?.email ?? ''}
+                </p>
               </div>
             </div>
             <button
-              onClick={async () => { setShowSignOutConfirm(false); await signOutUser() }}
-              className="w-full rounded-2xl border border-red-100 py-3.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+              onClick={async () => {
+                setShowSignOutConfirm(false)
+                await signOutUser()
+              }}
+              className="w-full rounded-lg border py-3.5 text-sm font-medium transition-colors"
+              style={{ borderColor: '#FAD4CA', color: '#B85C38' }}
             >
               Sign out
             </button>
             <button
               onClick={() => setShowSignOutConfirm(false)}
-              className="mt-2 w-full rounded-2xl py-3 text-sm text-gray-400 hover:bg-gray-50 transition-colors"
+              className="mt-2 w-full rounded-lg py-3 text-sm transition-colors"
+              style={{ color: '#7A7268' }}
             >
               Cancel
             </button>
