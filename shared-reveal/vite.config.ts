@@ -19,8 +19,8 @@ export default defineConfig({
         enabled: false, // Enable only when actively debugging the service worker
       },
       manifest: {
-        name: 'Reveal',
-        short_name: 'Reveal',
+        name: 'Bird Eye',
+        short_name: 'Bird Eye',
         description: 'Share what reminded you of them today',
         theme_color: '#ffffff',
         background_color: '#ffffff',

@@ -56,7 +56,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <h1 className="mb-4 text-center text-2xl font-bold text-gray-900">Reveal</h1>
+        <h1 className="mb-4 text-center text-2xl font-bold text-gray-900">Bird Eye</h1>
 
         {/* Auth identity (from Firebase Auth token) */}
         <div className="mb-6 space-y-1 text-center">

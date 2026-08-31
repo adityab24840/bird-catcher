@@ -28,7 +28,7 @@ export default function LandingPage() {
 
         {/* Heading */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reveal</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Bird Eye</h1>
           <p className="mt-2 text-gray-500">Share what reminded you of them today.</p>
         </div>
 
