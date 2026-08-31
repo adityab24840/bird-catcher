@@ -239,11 +239,7 @@ export const submitEntry = onCall(callableOptions, async (request) => {
       ? (entrySnap.data()!.submittedMembers ?? [])
       : []
     isResubmission = existingMembers.includes(uid)
-    // Re-submissions allowed — overwrites existing content (SUBM-04 relaxed by product decision)
-    // But block re-submission after reveal (entry is sealed)
-    if (isResubmission && (entrySnap.data()?.status === 'revealed')) {
-      throw new HttpsError('failed-precondition', 'Entry already revealed')
-    }
+    // Re-submissions always allowed — overwrites existing content even after reveal
 
     // WRITE 1: submission subcollection doc
     tx.set(submissionRef, {

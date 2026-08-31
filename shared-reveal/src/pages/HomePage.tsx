@@ -201,7 +201,7 @@ export default function HomePage() {
           </div>
         ) : entryDoc?.status === 'revealed' ? (
           /* ── REVEALED ── */
-          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center gap-5">
+          <div className="flex flex-col items-center text-center gap-5 pt-6">
             <div className="text-6xl">✨</div>
             <div>
               <p className="text-2xl font-bold text-gray-900">Reveal ready</p>
@@ -213,6 +213,57 @@ export default function HomePage() {
             >
               Open →
             </button>
+            {!showResubmitForm ? (
+              <button
+                onClick={() => setShowResubmitForm(true)}
+                className="w-full rounded-2xl border border-purple-100 py-3 text-sm font-medium text-purple-500 hover:bg-purple-50 transition-colors"
+              >
+                + Add another thing
+              </button>
+            ) : (
+              <div className="w-full space-y-3 text-left">
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoSelect} className="hidden" />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={submitting || uploadingPhoto}
+                  className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-dashed border-purple-100 bg-purple-50 hover:bg-purple-100 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center"
+                >
+                  {photoPreview ? (
+                    <>
+                      <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedPhoto(null); setPhotoPreview(null) }}
+                        className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 text-white flex items-center justify-center text-sm">×</button>
+                    </>
+                  ) : (
+                    <div className="text-center select-none">
+                      <div className="text-3xl mb-1">📷</div>
+                      <p className="text-xs text-purple-400">Tap to add photo</p>
+                    </div>
+                  )}
+                </button>
+                <textarea
+                  value={submissionText}
+                  onChange={(e) => setSubmissionText(e.target.value.slice(0, 500))}
+                  placeholder="Add another thought..."
+                  disabled={submitting || uploadingPhoto}
+                  rows={2}
+                  className="w-full rounded-xl border border-purple-100 px-4 py-3 text-sm resize-none focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 disabled:opacity-50 placeholder:text-purple-200"
+                />
+                {submitError && <p className="text-xs text-red-500">{submitError}</p>}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setShowResubmitForm(false); setSelectedPhoto(null); setPhotoPreview(null); setSubmissionText('') }}
+                    className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm text-gray-400 hover:bg-gray-50"
+                  >Cancel</button>
+                  <button
+                    onClick={async () => { await handleSubmit(); setShowResubmitForm(false) }}
+                    disabled={submitting || uploadingPhoto}
+                    className="flex-1 rounded-xl bg-purple-500 py-2.5 text-sm font-semibold text-white hover:bg-purple-600 disabled:opacity-50"
+                  >{uploadingPhoto ? 'Uploading…' : submitting ? 'Sharing…' : 'Share'}</button>
+                </div>
+              </div>
+            )}
           </div>
         ) : iSubmitted ? (
           /* ── WAITING ── */
