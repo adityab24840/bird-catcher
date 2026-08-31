@@ -1,0 +1,70 @@
+import { httpsCallable } from 'firebase/functions'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { functions, storage } from '../firebase/config'
+import imageCompression from 'browser-image-compression'
+
+interface SubmitEntryInput {
+  entryDate: string
+  text: string | null
+  photoURL: string | null
+}
+
+interface SubmitEntryResult {
+  entryDate: string
+  alreadySubmitted: boolean
+}
+
+export const submitEntryFn = httpsCallable<SubmitEntryInput, SubmitEntryResult>(
+  functions,
+  'submitEntry'
+)
+
+export async function uploadSubmissionPhoto(
+  pairId: string,
+  entryDate: string,
+  uid: string,
+  file: File
+): Promise<string> {
+  try {
+    // Step 1: HEIC detection — iOS sometimes returns empty MIME for HEIC files
+    const isHeic =
+      file.type === 'image/heic' ||
+      file.type === 'image/heif' ||
+      file.name.toLowerCase().endsWith('.heic') ||
+      file.name.toLowerCase().endsWith('.heif')
+
+    let fileToCompress: File
+
+    if (isHeic) {
+      // Step 2: Lazy-import heic2any (~1.2 MB WASM — keep out of initial bundle)
+      const heic2any = (await import('heic2any')).default
+      const result = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 })
+      // heic2any returns Blob | Blob[] (Burst/Live Photo returns array)
+      const jpegBlob: Blob = Array.isArray(result) ? result[0] : result
+      fileToCompress = new File([jpegBlob], 'photo.jpg', { type: 'image/jpeg' })
+    } else {
+      fileToCompress = file
+    }
+
+    // Step 3: Compress to <= 1 MB
+    const compressedFile = await imageCompression(fileToCompress, {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+    })
+
+    // Step 4: Upload to Firebase Storage
+    const storagePath = `pairs/${pairId}/entries/${entryDate}/${uid}/photo.jpg`
+    const storageRef = ref(storage, storagePath)
+    const snapshot = await uploadBytes(storageRef, compressedFile, {
+      contentType: 'image/jpeg',
+    })
+
+    // Step 5: Get permanent download URL
+    const photoURL = await getDownloadURL(snapshot.ref)
+    return photoURL
+  } catch (err) {
+    console.error('[uploadSubmissionPhoto] failed:', err)
+    throw err
+  }
+}

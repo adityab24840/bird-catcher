@@ -18,6 +18,7 @@ import {
   connectFirestoreEmulator,
 } from 'firebase/firestore'
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions'
+import { getStorage, connectStorageEmulator } from 'firebase/storage'
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 
 const firebaseConfig = {
@@ -56,6 +57,8 @@ initializeAppCheck(app, {
 
 export const functions = getFunctions(app)
 
+export const storage = getStorage(app)
+
 // Connect to local emulators when the env var is set.
 // VITE_FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
 // VITE_FIRESTORE_EMULATOR_HOST=127.0.0.1:8080
@@ -67,4 +70,5 @@ if (import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST) {
   )
   connectFirestoreEmulator(db, '127.0.0.1', 8080)
   connectFunctionsEmulator(functions, '127.0.0.1', 5001)
+  connectStorageEmulator(storage, '127.0.0.1', 9199)
 }

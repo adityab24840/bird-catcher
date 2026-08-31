@@ -12,13 +12,21 @@ import { useAuth } from '../hooks/useAuth'
 import { signOutUser } from '../services/auth'
 import { db } from '../firebase/config'
 import type { UserDoc } from '../types/index'
+import { useEntry } from '../hooks/useEntry'
+import { uploadSubmissionPhoto, submitEntryFn } from '../services/submissions'
 
 export default function HomePage() {
   const { user } = useAuth()
   const [userDoc, setUserDoc] = useState<UserDoc | null>(null)
   const [docLoading, setDocLoading] = useState(true)
   const [partnerId, setPartnerId] = useState<string | null>(null)
-  const [partnerDoc, setPartnerDoc] = useState<UserDoc | null>(null)
+  const [entryDate, setEntryDate] = useState<string>('')
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [submissionText, setSubmissionText] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   // Subscribe to own user doc — detects pairId becoming non-null after pair join
   useEffect(() => {
@@ -39,11 +47,10 @@ export default function HomePage() {
     return () => unsub()
   }, [user])
 
-  // Subscribe to pair doc to find partner UID, then subscribe to partner's user doc (D-05)
+  // Subscribe to pair doc to find partner UID (needed for partner status badge)
   useEffect(() => {
     if (!userDoc?.pairId) {
       setPartnerId(null)
-      setPartnerDoc(null)
       return
     }
 
@@ -59,23 +66,56 @@ export default function HomePage() {
   }, [userDoc?.pairId, user?.uid])
 
   useEffect(() => {
-    if (!partnerId) {
-      setPartnerDoc(null)
+    setEntryDate(new Date().toLocaleDateString('en-CA'))
+  }, [])
+
+  const { entryDoc, entryLoading } = useEntry(userDoc?.pairId ?? null, entryDate)
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setSelectedPhoto(file)
+    const reader = new FileReader()
+    reader.onload = (evt) => setPhotoPreview(evt.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  function handleRemovePhoto() {
+    setSelectedPhoto(null)
+    setPhotoPreview(null)
+  }
+
+  async function handleSubmit() {
+    setSubmitError(null)
+    if (!selectedPhoto && !submissionText.trim()) {
+      setSubmitError('Please add a photo or text before submitting.')
       return
     }
-
-    const unsub = onSnapshot(
-      doc(db, 'users', partnerId),
-      (snap) => {
-        setPartnerDoc(snap.exists() ? (snap.data() as UserDoc) : null)
-      },
-      (err) => {
-        console.error('[HomePage] partnerDoc listener error:', err)
-      },
-    )
-
-    return () => unsub()
-  }, [partnerId])
+    setSubmitting(true)
+    let photoURL: string | null = null
+    try {
+      if (selectedPhoto && userDoc?.pairId && user) {
+        setUploadingPhoto(true)
+        photoURL = await uploadSubmissionPhoto(userDoc.pairId, entryDate, user.uid, selectedPhoto)
+        setUploadingPhoto(false)
+      }
+      await submitEntryFn({
+        entryDate,
+        text: submissionText.trim() || null,
+        photoURL,
+      })
+      setSelectedPhoto(null)
+      setPhotoPreview(null)
+      setSubmissionText('')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to submit'
+      setSubmitError(message)
+      console.error('[HomePage] submit error:', err)
+    } finally {
+      setSubmitting(false)
+      setUploadingPhoto(false)
+    }
+  }
 
   async function handleSignOut() {
     try {
@@ -110,28 +150,71 @@ export default function HomePage() {
           <p className="text-sm text-gray-500">{user?.email ?? '—'}</p>
         </div>
 
-        {/* Partner identity card (D-05) — Phase 3 replaces this with submission UI */}
+        {/* Submission state machine (Phase 3) */}
         <div className="mb-6 rounded-xl bg-gray-50 p-4 text-sm text-center">
-          {docLoading ? (
+          {docLoading || entryLoading ? (
             <p className="text-gray-400">Loading…</p>
-          ) : userDoc?.pairId && partnerDoc ? (
-            <>
-              {partnerDoc.photoURL && (
-                <img
-                  src={partnerDoc.photoURL}
-                  className="mx-auto mb-2 h-12 w-12 rounded-full"
-                  alt="Partner"
-                />
+          ) : entryDoc?.submittedMembers?.includes(user?.uid ?? '') ? (
+            <div className="space-y-3">
+              <div className="text-2xl">✓</div>
+              <p className="font-medium text-gray-900">You&apos;ve shared something for today</p>
+              {entryDoc?.submittedMembers?.includes(partnerId ?? '') ? (
+                <p className="text-xs text-green-600 mt-2">They&apos;ve shared something too ✓</p>
+              ) : (
+                <p className="text-xs text-gray-500 mt-2">Waiting for them to share…</p>
               )}
-              <p className="font-medium text-gray-900">{partnerDoc.displayName ?? '—'}</p>
-              <p className="mt-1 text-xs text-gray-500">You're connected</p>
-            </>
-          ) : userDoc?.pairId ? (
-            <p className="text-gray-400">Loading partner…</p>
+            </div>
           ) : (
-            <p className="text-amber-600 text-xs">
-              No pair yet — this page should only be reached after pairing.
-            </p>
+            <div className="space-y-3 text-left">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-2">Photo (optional)</label>
+                {photoPreview ? (
+                  <div className="relative">
+                    <img src={photoPreview} alt="Preview" className="w-full h-32 object-cover rounded-lg" />
+                    <button
+                      onClick={handleRemovePhoto}
+                      className="absolute top-1 right-1 bg-white rounded-full p-1 shadow text-sm leading-none"
+                    >×</button>
+                  </div>
+                ) : (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoSelect}
+                    disabled={submitting || uploadingPhoto}
+                    className="block w-full text-xs text-gray-500 file:rounded-lg file:border-0 file:bg-purple-500 file:text-white file:px-3 file:py-1 cursor-pointer disabled:opacity-50"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  Text (optional) · {submissionText.length}/500
+                </label>
+                <textarea
+                  value={submissionText}
+                  onChange={(e) => setSubmissionText(e.target.value.slice(0, 500))}
+                  placeholder="What reminded you of them today?"
+                  disabled={submitting || uploadingPhoto}
+                  rows={3}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                />
+              </div>
+              {submitError && <p className="text-xs text-red-600">{submitError}</p>}
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || uploadingPhoto}
+                className="w-full rounded-lg bg-purple-500 py-2 text-sm font-medium text-white hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+              >
+                {uploadingPhoto ? 'Uploading photo…' : submitting ? 'Submitting…' : "Share today's something"}
+              </button>
+              {entryDoc && (
+                <p className="text-xs text-gray-500 text-center">
+                  {entryDoc.submittedMembers?.includes(partnerId ?? '')
+                    ? "They've shared something for today ✓"
+                    : 'Waiting for them to share…'}
+                </p>
+              )}
+            </div>
           )}
         </div>
 
