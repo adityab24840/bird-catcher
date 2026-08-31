@@ -6,6 +6,7 @@ import { signOutUser } from '../services/auth'
 import { db } from '../firebase/config'
 import type { UserDoc } from '../types/index'
 import { useEntry } from '../hooks/useEntry'
+import { useStreak } from '../hooks/useStreak'
 import { uploadSubmissionPhoto, submitEntryFn, revealAnywayFn } from '../services/submissions'
 
 function Avatar({
@@ -46,6 +47,7 @@ export default function HomePage() {
   const [revealing, setRevealing] = useState(false)
   const [revealError, setRevealError] = useState<string | null>(null)
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
+  const [showResubmitForm, setShowResubmitForm] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -86,6 +88,12 @@ export default function HomePage() {
   }, [])
 
   const { entryDoc, entryLoading } = useEntry(userDoc?.pairId ?? null, entryDate)
+
+  const { myStreak, partnerStreak } = useStreak(
+    userDoc?.pairId ?? null,
+    user?.uid ?? null,
+    partnerId,
+  )
 
   const iSubmitted = entryDoc?.submittedMembers?.includes(user?.uid ?? '') ?? false
   const partnerSubmitted = entryDoc?.submittedMembers?.includes(partnerId ?? '') ?? false
@@ -164,6 +172,29 @@ export default function HomePage() {
 
       {/* Main content */}
       <main className="flex-1 px-5 overflow-y-auto">
+        {/* Dare streak banner */}
+        {partnerStreak >= 3 && (
+          <div className="mb-4 rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 flex items-center gap-3">
+            <span className="text-2xl">🎯</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">
+                {partnerFirstName} missed {partnerStreak} days
+              </p>
+              <p className="text-xs text-amber-600">You're owed a dare — make them do anything!</p>
+            </div>
+          </div>
+        )}
+        {myStreak >= 3 && (
+          <div className="mb-4 rounded-2xl bg-rose-50 border border-rose-100 px-4 py-3 flex items-center gap-3">
+            <span className="text-2xl">😬</span>
+            <div>
+              <p className="text-sm font-semibold text-rose-800">
+                You missed {myStreak} days
+              </p>
+              <p className="text-xs text-rose-600">{partnerFirstName} gets to dare you — better check in!</p>
+            </div>
+          </div>
+        )}
         {docLoading || entryLoading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="h-7 w-7 rounded-full border-2 border-purple-200 border-t-purple-500 animate-spin" />
@@ -220,6 +251,64 @@ export default function HomePage() {
                 {revealing ? 'Revealing…' : "Don't want to wait? Reveal now"}
               </button>
               {revealError && <p className="text-xs text-red-500 mt-2">{revealError}</p>}
+              {!showResubmitForm && (
+                <button
+                  onClick={() => setShowResubmitForm(true)}
+                  className="w-full rounded-2xl border border-purple-100 py-3 text-sm font-medium text-purple-500 hover:bg-purple-50 transition-colors mt-2"
+                >
+                  + Add another thing
+                </button>
+              )}
+              {showResubmitForm && (
+                <div className="w-full space-y-3 mt-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoSelect}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={submitting || uploadingPhoto}
+                    className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-dashed border-purple-100 bg-purple-50 hover:bg-purple-100 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {photoPreview ? (
+                      <>
+                        <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedPhoto(null); setPhotoPreview(null) }}
+                          className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 text-white flex items-center justify-center text-sm">×</button>
+                      </>
+                    ) : (
+                      <div className="text-center select-none">
+                        <div className="text-3xl mb-1">📷</div>
+                        <p className="text-xs text-purple-400">Tap to add photo</p>
+                      </div>
+                    )}
+                  </button>
+                  <textarea
+                    value={submissionText}
+                    onChange={(e) => setSubmissionText(e.target.value.slice(0, 500))}
+                    placeholder="Add another thought..."
+                    disabled={submitting || uploadingPhoto}
+                    rows={2}
+                    className="w-full rounded-xl border border-purple-100 px-4 py-3 text-sm resize-none focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100 disabled:opacity-50 placeholder:text-purple-200"
+                  />
+                  {submitError && <p className="text-xs text-red-500">{submitError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setShowResubmitForm(false); setSelectedPhoto(null); setPhotoPreview(null); setSubmissionText('') }}
+                      className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm text-gray-400 hover:bg-gray-50"
+                    >Cancel</button>
+                    <button
+                      onClick={async () => { await handleSubmit(); setShowResubmitForm(false) }}
+                      disabled={submitting || uploadingPhoto}
+                      className="flex-1 rounded-xl bg-purple-500 py-2.5 text-sm font-semibold text-white hover:bg-purple-600 disabled:opacity-50"
+                    >{uploadingPhoto ? 'Uploading…' : submitting ? 'Sharing…' : 'Share'}</button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ) : (

@@ -213,6 +213,8 @@ export const submitEntry = onCall(callableOptions, async (request) => {
   const db = getFirestore()
   const userRef = db.doc(`users/${uid}`)
 
+  let isResubmission = false
+
   await db.runTransaction(async (tx) => {
     // ALL READS BEFORE WRITES — Admin SDK constraint (see joinPair pattern)
     const userSnap = await tx.get(userRef)
@@ -236,8 +238,11 @@ export const submitEntry = onCall(callableOptions, async (request) => {
     const existingMembers: string[] = entrySnap.exists
       ? (entrySnap.data()!.submittedMembers ?? [])
       : []
-    if (existingMembers.includes(uid)) {
-      throw new HttpsError('already-exists', 'You have already submitted today')
+    isResubmission = existingMembers.includes(uid)
+    // Re-submissions allowed — overwrites existing content (SUBM-04 relaxed by product decision)
+    // But block re-submission after reveal (entry is sealed)
+    if (isResubmission && (entrySnap.data()?.status === 'revealed')) {
+      throw new HttpsError('failed-precondition', 'Entry already revealed')
     }
 
     // WRITE 1: submission subcollection doc
@@ -258,16 +263,19 @@ export const submitEntry = onCall(callableOptions, async (request) => {
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       })
-    } else {
+    } else if (!isResubmission) {
       tx.update(entryRef, {
         submittedMembers: FieldValue.arrayUnion(uid),
         status: 'one_submitted',
         updatedAt: FieldValue.serverTimestamp(),
       })
+    } else {
+      // Re-submission: just touch updatedAt (submittedMembers already has uid)
+      tx.update(entryRef, { updatedAt: FieldValue.serverTimestamp() })
     }
   })
 
-  return { entryDate, alreadySubmitted: false }
+  return { entryDate, alreadySubmitted: isResubmission }
 })
 
 /**
