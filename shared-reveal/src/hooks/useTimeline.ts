@@ -6,11 +6,13 @@ import type { EntryDoc } from '../types/index'
 interface TimelineState {
   entries: EntryDoc[]
   loading: boolean
+  error: string | null
 }
 
 export function useTimeline(pairId: string | null): TimelineState {
   const [entries, setEntries] = useState<EntryDoc[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!pairId) {
@@ -33,10 +35,12 @@ export function useTimeline(pairId: string | null): TimelineState {
           .map((d) => d.data() as EntryDoc)
           .sort((a, b) => b.date.localeCompare(a.date))
         setEntries(sorted)
+        setError(null)
         setLoading(false)
       },
       (err) => {
         console.error('[useTimeline] error:', err)
+        setError(err.message ?? 'Query failed')
         setLoading(false)
       }
     )
@@ -44,5 +48,5 @@ export function useTimeline(pairId: string | null): TimelineState {
     return () => unsub()
   }, [pairId])
 
-  return { entries, loading }
+  return { entries, loading, error }
 }

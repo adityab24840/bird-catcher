@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, doc, getDocs, onSnapshot } from 'firebase/firestore'
+import { doc, getDoc, onSnapshot } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../firebase/config'
 import { useTimeline } from '../hooks/useTimeline'
@@ -35,12 +35,24 @@ function TimelineCard({
   memberDocs: Record<string, UserDoc>
 }) {
   const [submissions, setSubmissions] = useState<SubmissionDoc[]>([])
+  const [subError, setSubError] = useState<string | null>(null)
 
   useEffect(() => {
-    getDocs(collection(db, `pairs/${pairId}/entries/${entry.date}/submissions`))
-      .then((snap) => setSubmissions(snap.docs.map((d) => d.data() as SubmissionDoc)))
-      .catch((err) => console.error('[TimelineCard] error:', err))
-  }, [pairId, entry.date])
+    const memberUids = Object.keys(memberDocs)
+    if (!memberUids.length) return
+
+    Promise.all(
+      memberUids.map((uid) =>
+        getDoc(doc(db, `pairs/${pairId}/entries/${entry.date}/submissions/${uid}`))
+          .then((snap) => (snap.exists() ? (snap.data() as SubmissionDoc) : null))
+          .catch((err) => {
+            console.error(`[TimelineCard] fetch submission ${uid} error:`, err)
+            setSubError(err.message ?? 'Permission denied')
+            return null
+          })
+      )
+    ).then((results) => setSubmissions(results.filter((s): s is SubmissionDoc => s !== null)))
+  }, [pairId, entry.date, memberDocs])
 
   const dateLabel = new Date(entry.date + 'T12:00:00').toLocaleDateString('en-US', {
     weekday: 'long',
@@ -80,12 +92,16 @@ function TimelineCard({
             </div>
           )
         })}
-        {/* Placeholder cols while loading */}
+        {/* Placeholder / error while loading */}
         {submissions.length === 0 && (
-          <>
-            <div className="h-32 animate-pulse bg-gray-50" />
-            <div className="h-32 animate-pulse bg-gray-50" />
-          </>
+          subError ? (
+            <div className="col-span-2 p-3 text-xs text-red-500 font-mono break-all">{subError}</div>
+          ) : (
+            <>
+              <div className="h-32 animate-pulse bg-gray-50" />
+              <div className="h-32 animate-pulse bg-gray-50" />
+            </>
+          )
         )}
       </div>
     </div>
@@ -95,7 +111,7 @@ function TimelineCard({
 export default function TimelinePage() {
   const { user } = useAuth()
   const { pairId } = usePairId(user?.uid ?? null)
-  const { entries, loading } = useTimeline(pairId)
+  const { entries, loading, error } = useTimeline(pairId)
   const navigate = useNavigate()
 
   const [memberDocs, setMemberDocs] = useState<Record<string, UserDoc>>({})
@@ -151,11 +167,17 @@ export default function TimelinePage() {
           <div className="flex h-64 items-center justify-center">
             <div className="h-7 w-7 rounded-full border-2 border-purple-200 border-t-purple-500 animate-spin" />
           </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center h-64 text-center gap-3 px-4">
+            <div className="text-3xl">⚠️</div>
+            <p className="text-sm text-red-500 font-mono break-all">{error}</p>
+            <p className="text-xs text-gray-400">pairId: {pairId ?? 'null'}</p>
+          </div>
         ) : entries.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
             <div className="text-4xl">🌙</div>
             <p className="text-gray-500 font-medium">Nothing revealed yet</p>
-            <p className="text-sm text-gray-400">Entries appear here once both of you share</p>
+            <p className="text-xs text-gray-400">pairId: {pairId ?? 'null'}</p>
           </div>
         ) : (
           <div className="space-y-4">
