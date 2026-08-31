@@ -43,6 +43,11 @@ const JoinPairSchema = z.object({
   inviteCode: z.string().length(6).regex(/^[A-F0-9]{6}$/),
 })
 
+// App Check enforcement: emulator sets FUNCTIONS_EMULATOR=true and does not issue
+// real App Check tokens, so enforcing there always throws unauthenticated.
+// Enforce only in production (SEC-07).
+const callableOptions = process.env.FUNCTIONS_EMULATOR ? {} : { enforceAppCheck: true }
+
 /**
  * Creates a new pair and returns a 6-char invite code.
  *
@@ -50,7 +55,7 @@ const JoinPairSchema = z.object({
  * CRITICAL (D-03): does NOT set users/{creatorUid}.pairId — that happens in joinPair
  * so User A stays on /pair-setup until their partner joins.
  */
-export const createPair = onCall({ enforceAppCheck: true }, async (request) => {
+export const createPair = onCall(callableOptions, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Must be signed in')
   }
@@ -94,7 +99,7 @@ export const createPair = onCall({ enforceAppCheck: true }, async (request) => {
  *
  * PAIR-03, PAIR-04, PAIR-05, PAIR-06, SEC-05, SEC-07.
  */
-export const joinPair = onCall({ enforceAppCheck: true }, async (request) => {
+export const joinPair = onCall(callableOptions, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'Must be signed in')
   }
