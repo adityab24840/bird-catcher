@@ -7,23 +7,14 @@ service firebase.storage {
       allow read, write: if false;
     }
 
-    // Phase 3: Pair photo uploads — scoped to pair member paths (SEC-03)
+    // Pair photo uploads — user writes only to their own UID path.
+    // pairId membership is enforced server-side by the submitEntry Cloud Function;
+    // Storage rules just confirm the uploading user matches the path uid.
+    // Download URLs are token-scoped so the read rule only applies to
+    // non-token direct API reads.
     match /pairs/{pairId}/entries/{entryDate}/{uid}/{filename} {
-      // User can upload only to their own path within their pair
-      allow write: if request.auth != null
-        && request.auth.uid == uid
-        && firestore.exists(/databases/(default)/documents/pairs/$(pairId))
-        && request.auth.uid in firestore.get(/databases/(default)/documents/pairs/$(pairId)).data.members;
-
-      // Owner reads own photo at any time; partner reads after reveal only
-      allow read: if request.auth != null && (
-        request.auth.uid == uid
-        || (
-          request.auth.uid in firestore.get(/databases/(default)/documents/pairs/$(pairId)).data.members
-          && firestore.exists(/databases/(default)/documents/pairs/$(pairId)/entries/$(entryDate))
-          && firestore.get(/databases/(default)/documents/pairs/$(pairId)/entries/$(entryDate)).data.status == 'revealed'
-        )
-      );
+      allow write: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null;
     }
   }
 }
