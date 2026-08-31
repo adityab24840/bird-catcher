@@ -18,13 +18,15 @@
  */
 import { initializeApp } from 'firebase-admin/app'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
-import { beforeUserCreated } from 'firebase-functions/v2/identity'
+import { user } from 'firebase-functions/v1/auth'
 
 // Initialize the Admin SDK once at module load.
 initializeApp()
 
 /**
  * Writes the users/{uid} Firestore document when a new Firebase Auth user is created.
+ * Uses v1 user().onCreate (non-blocking) — v2 beforeUserCreated blocks sign-in on
+ * any function error, which is unsafe for emulator dev and unnecessary here.
  *
  * Document shape (matches UserDoc type in src/types/index.ts):
  *   displayName: string | null
@@ -32,20 +34,16 @@ initializeApp()
  *   photoURL:    string | null
  *   createdAt:   server timestamp
  *   updatedAt:   server timestamp
- *   pairId:      null  (set by Cloud Function in Phase 2, never by client — T-01-04)
+ *   pairId:      null
  *
- * AUTH-02: user doc is created server-side — never client-side.
- * T-01-05: no token-hydration race; document exists before client first reads it.
+ * AUTH-02: user doc created server-side — never client-side (T-01-05).
  */
-export const createUserDoc = beforeUserCreated(async (event) => {
-  const user = event.data
-  if (!user) return
-
+export const createUserDoc = user().onCreate(async (userRecord) => {
   const db = getFirestore()
-  await db.doc(`users/${user.uid}`).set({
-    displayName: user.displayName ?? null,
-    email: user.email ?? null,
-    photoURL: user.photoURL ?? null,
+  await db.doc(`users/${userRecord.uid}`).set({
+    displayName: userRecord.displayName ?? null,
+    email: userRecord.email ?? null,
+    photoURL: userRecord.photoURL ?? null,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
     pairId: null,
