@@ -50,7 +50,12 @@ export interface EntryDoc {
  */
 export interface SubmissionDoc {
   uid: string
-  photoURL: string | null  // Firebase Storage download URL, null if text-only submission
-  text: string | null  // max 500 chars enforced by CF schema, null if photo-only submission
+  // v2 format: arrays accumulate across re-submissions
+  photoURLs: string[]
+  texts: string[]
+  // v1 legacy fields (old docs written before arrays — kept for backward compat)
+  photoURL?: string | null
+  text?: string | null
   submittedAt: Timestamp
+  updatedAt?: Timestamp
 }

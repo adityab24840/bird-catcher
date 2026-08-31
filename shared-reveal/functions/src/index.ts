@@ -231,23 +231,42 @@ export const submitEntry = onCall(callableOptions, async (request) => {
     const entryRef = db.doc(`pairs/${pairId}/entries/${entryDate}`)
     const submissionRef = entryRef.collection('submissions').doc(uid)
 
-    // READ 2: entry doc (may not exist on first submission)
-    const entrySnap = await tx.get(entryRef)
+    // READ 2+3: entry doc and existing submission doc (reads must precede writes)
+    const [entrySnap, submissionSnap] = await Promise.all([
+      tx.get(entryRef),
+      tx.get(submissionRef),
+    ])
 
-    // SUBM-04: idempotent guard — check before any writes
     const existingMembers: string[] = entrySnap.exists
       ? (entrySnap.data()!.submittedMembers ?? [])
       : []
     isResubmission = existingMembers.includes(uid)
-    // Re-submissions always allowed — overwrites existing content even after reveal
 
-    // WRITE 1: submission subcollection doc
-    tx.set(submissionRef, {
-      uid,
-      photoURL: photoURL ?? null,
-      text: text ?? null,
-      submittedAt: FieldValue.serverTimestamp(),
-    })
+    // WRITE 1: submission doc — accumulate into arrays on re-submission
+    if (!submissionSnap.exists) {
+      tx.set(submissionRef, {
+        uid,
+        photoURLs: photoURL ? [photoURL] : [],
+        texts: text ? [text] : [],
+        submittedAt: FieldValue.serverTimestamp(),
+      })
+    } else {
+      // Migrate v1 doc if needed, then append
+      const existing = submissionSnap.data()!
+      const existingPhotos: string[] = existing.photoURLs ??
+        (existing.photoURL ? [existing.photoURL] : [])
+      const existingTexts: string[] = existing.texts ??
+        (existing.text ? [existing.text] : [])
+      tx.set(submissionRef, {
+        uid,
+        photoURLs: photoURL ? [...existingPhotos, photoURL] : existingPhotos,
+        texts: text ? [...existingTexts, text] : existingTexts,
+        photoURL: null,
+        text: null,
+        submittedAt: existing.submittedAt ?? FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      })
+    }
 
     // WRITE 2: entry doc — MUST branch on exists (tx.update on non-existent throws)
     if (!entrySnap.exists) {

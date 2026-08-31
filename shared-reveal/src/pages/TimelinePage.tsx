@@ -22,6 +22,15 @@ function SubmissionCard({ sub, member }: { sub: SubmissionDoc; member: UserDoc |
     ? sub.submittedAt.toDate().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
     : ''
 
+  // Merge v1 (singular) and v2 (array) fields for backward compat
+  const photos = sub.photoURLs?.length
+    ? sub.photoURLs
+    : sub.photoURL ? [sub.photoURL] : []
+  const texts = sub.texts?.length
+    ? sub.texts
+    : sub.text ? [sub.text] : []
+  const hasContent = photos.length > 0 || texts.length > 0
+
   return (
     <div className="bg-white rounded-3xl overflow-hidden shadow-sm">
       {/* Header */}
@@ -35,22 +44,25 @@ function SubmissionCard({ sub, member }: { sub: SubmissionDoc; member: UserDoc |
         </div>
       </div>
 
-      {/* Photo */}
-      {sub.photoURL && (
+      {/* All photos */}
+      {photos.map((url, i) => (
         <img
-          src={sub.photoURL}
+          key={i}
+          src={url}
           alt="submission"
           className="w-full object-cover"
           style={{ maxHeight: 340 }}
         />
-      )}
+      ))}
 
-      {/* Text */}
-      {sub.text && (
-        <p className="px-4 py-3.5 text-[15px] text-gray-800 leading-relaxed">{sub.text}</p>
-      )}
+      {/* All texts */}
+      {texts.map((t, i) => (
+        <p key={i} className="px-4 py-3.5 text-[15px] text-gray-800 leading-relaxed border-t border-gray-50 first:border-0">
+          {t}
+        </p>
+      ))}
 
-      {!sub.photoURL && !sub.text && (
+      {!hasContent && (
         <p className="px-4 py-3 text-sm text-gray-300 italic">Nothing shared</p>
       )}
     </div>
