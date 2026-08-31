@@ -41,6 +41,30 @@ export const submitEntryFn = httpsCallable<SubmitEntryInput, SubmitEntryResult>(
   'submitEntry'
 )
 
+async function toJpeg(file: File): Promise<File> {
+  // Try canvas first — works for JPEG/PNG/WebP
+  const canvasResult = await compressImage(file)
+  if (canvasResult !== file) return canvasResult   // canvas succeeded
+
+  // Canvas returned same reference → likely HEIC or undecodable format
+  // Fall back to heic2any (lazy-loaded, ~1.2 MB WASM)
+  try {
+    const heic2any = (await import('heic2any')).default
+    const result = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.88 })
+    const jpegBlob: Blob = Array.isArray(result) ? result[0] : result
+    const jpegFile = new File([jpegBlob], 'photo.jpg', { type: 'image/jpeg' })
+    return compressImage(jpegFile)   // compress the freshly converted JPEG
+  } catch {
+    // heic2any failed — upload original and hope browser handles it
+    return file
+  }
+}
+
+export async function toJpegPreviewUrl(file: File): Promise<string> {
+  const jpeg = await toJpeg(file)
+  return URL.createObjectURL(jpeg)
+}
+
 export async function uploadSubmissionPhoto(
   pairId: string,
   entryDate: string,
@@ -48,39 +72,11 @@ export async function uploadSubmissionPhoto(
   file: File
 ): Promise<string> {
   try {
-    // Step 1: HEIC detection — iOS sometimes returns empty MIME for HEIC files
-    const isHeic =
-      file.type === 'image/heic' ||
-      file.type === 'image/heif' ||
-      file.name.toLowerCase().endsWith('.heic') ||
-      file.name.toLowerCase().endsWith('.heif')
-
-    let fileToCompress: File
-
-    if (isHeic) {
-      // Step 2: Lazy-import heic2any (~1.2 MB WASM — keep out of initial bundle)
-      const heic2any = (await import('heic2any')).default
-      const result = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 })
-      // heic2any returns Blob | Blob[] (Burst/Live Photo returns array)
-      const jpegBlob: Blob = Array.isArray(result) ? result[0] : result
-      fileToCompress = new File([jpegBlob], 'photo.jpg', { type: 'image/jpeg' })
-    } else {
-      fileToCompress = file
-    }
-
-    // Step 3: Canvas-based compress — no web worker, safe on iOS Safari PWA
-    const compressedFile = await compressImage(fileToCompress)
-
-    // Step 4: Upload to Firebase Storage
+    const uploadFile = await toJpeg(file)
     const storagePath = `pairs/${pairId}/entries/${entryDate}/${uid}/${Date.now()}_photo.jpg`
     const storageRef = ref(storage, storagePath)
-    const snapshot = await uploadBytes(storageRef, compressedFile, {
-      contentType: 'image/jpeg',
-    })
-
-    // Step 5: Get permanent download URL
-    const photoURL = await getDownloadURL(snapshot.ref)
-    return photoURL
+    const snapshot = await uploadBytes(storageRef, uploadFile, { contentType: 'image/jpeg' })
+    return getDownloadURL(snapshot.ref)
   } catch (err) {
     console.error('[uploadSubmissionPhoto] failed:', err)
     throw err

@@ -72,8 +72,13 @@ function SubmissionCard({
           key={i}
           src={url}
           alt="submission"
-          className="w-full object-cover border-b"
-          style={{ maxHeight: 320, borderColor: '#F0EBE0', display: 'block' }}
+          style={{
+            width: '100%',
+            height: 260,
+            objectFit: 'cover',
+            display: 'block',
+            borderBottom: '1px solid #F0EBE0',
+          }}
         />
       ))}
 

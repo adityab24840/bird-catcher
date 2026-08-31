@@ -7,7 +7,7 @@ import { db } from '../firebase/config'
 import type { UserDoc } from '../types/index'
 import { useEntry } from '../hooks/useEntry'
 import { useStreak } from '../hooks/useStreak'
-import { uploadSubmissionPhoto, submitEntryFn, revealAnywayFn } from '../services/submissions'
+import { uploadSubmissionPhoto, submitEntryFn, revealAnywayFn, toJpegPreviewUrl } from '../services/submissions'
 
 function haptic(pattern: number | number[] = 10) {
   try { navigator.vibrate?.(pattern) } catch {}
@@ -224,13 +224,15 @@ export default function HomePage() {
       })()
     : ''
 
-  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setSelectedPhoto(file)
+    // Convert to JPEG first so preview works regardless of HEIC/format
+    const url = await toJpegPreviewUrl(file)
     setPhotoPreview((prev) => {
       if (prev) URL.revokeObjectURL(prev)
-      return URL.createObjectURL(file)
+      return url
     })
   }
 
