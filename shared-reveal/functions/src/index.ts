@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase-admin/app'
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { user } from 'firebase-functions/v1/auth'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
+import { onDocumentWritten } from 'firebase-functions/v2/firestore'
 import { z } from 'zod'
 
 // Must be set before initializeApp() so Admin SDK routes to Firestore emulator.
@@ -267,5 +268,89 @@ export const submitEntry = onCall(callableOptions, async (request) => {
   })
 
   return { entryDate, alreadySubmitted: false }
+})
+
+/**
+ * Firestore trigger: auto-reveals an entry when the second submission lands.
+ * Runs inside a transaction to guard against double-fire (idempotent status check).
+ *
+ * Phase 4: REVEAL-01 (auto-reveal when both members have submitted).
+ */
+export const autoReveal = onDocumentWritten(
+  'pairs/{pairId}/entries/{entryDate}/submissions/{uid}',
+  async (event) => {
+    // Ignore deletes
+    if (!event.data?.after.exists) return
+
+    const { pairId, entryDate } = event.params
+    const db = getFirestore()
+    const entryRef = db.doc(`pairs/${pairId}/entries/${entryDate}`)
+
+    await db.runTransaction(async (tx) => {
+      const entrySnap = await tx.get(entryRef)
+      if (!entrySnap.exists) return
+      const entry = entrySnap.data()!
+      // Guard: only reveal when 2 members submitted and not already revealed
+      if ((entry.submittedMembers ?? []).length < 2) return
+      if (entry.status === 'revealed') return
+
+      tx.update(entryRef, {
+        status: 'revealed',
+        revealedBy: 'auto',
+        revealReason: 'auto',
+        revealedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      })
+    })
+  }
+)
+
+const RevealAnywaySchema = z.object({
+  entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+})
+
+/**
+ * Callable: lets a user who has already submitted reveal the entry early
+ * without waiting for their partner.
+ *
+ * Phase 4: REVEAL-02 (reveal-anyway, manual trigger).
+ */
+export const revealAnyway = onCall(callableOptions, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Must be signed in')
+  const parsed = RevealAnywaySchema.safeParse(request.data)
+  if (!parsed.success) throw new HttpsError('invalid-argument', 'Invalid entry date')
+  const { entryDate } = parsed.data
+  const uid = request.auth.uid
+  const db = getFirestore()
+  const userRef = db.doc(`users/${uid}`)
+
+  await db.runTransaction(async (tx) => {
+    const userSnap = await tx.get(userRef)
+    if (!userSnap.exists) throw new HttpsError('not-found', 'User not found')
+    const pairId: string = userSnap.data()!.pairId
+    if (!pairId) throw new HttpsError('failed-precondition', 'Not in a pair')
+
+    const entryRef = db.doc(`pairs/${pairId}/entries/${entryDate}`)
+    const entrySnap = await tx.get(entryRef)
+    if (!entrySnap.exists) throw new HttpsError('not-found', 'Entry not found')
+    const entry = entrySnap.data()!
+
+    if (!(entry.submittedMembers ?? []).includes(uid)) {
+      throw new HttpsError('failed-precondition', 'You have not submitted today')
+    }
+    if (entry.status === 'revealed') {
+      throw new HttpsError('already-exists', 'Entry already revealed')
+    }
+
+    tx.update(entryRef, {
+      status: 'revealed',
+      revealedBy: uid,
+      revealReason: 'manual',
+      revealedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+  })
+
+  return { entryDate, revealed: true }
 })
 
