@@ -3,8 +3,17 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /users/{uid} {
-      // A user can read their own document only.
-      allow read: if request.auth != null && request.auth.uid == uid;
+      // Own doc read OR pair member reads partner doc for /home partner display (D-05).
+      // resource.data.pairId is the target user's pairId; requester must be in that pair.
+      // get() here is a billable Firestore read — acceptable at Phase 2 scale (2 users).
+      allow read: if request.auth != null && (
+        request.auth.uid == uid
+        || (
+          resource.data.pairId != null
+          && request.auth.uid in
+             get(/databases/$(database)/documents/pairs/$(resource.data.pairId)).data.members
+        )
+      );
 
       // A user can create their own document (initial sign-in via Cloud Function,
       // but allow client create as well for resilience — pairId starts null).
@@ -18,6 +27,15 @@ service cloud.firestore {
 
       // Deletion is not permitted from the client.
       allow delete: if false;
+    }
+
+    match /pairs/{pairId} {
+      // Members can read their pair document (invite code display, member count, etc.)
+      allow read: if request.auth != null
+        && request.auth.uid in resource.data.members;
+
+      // All writes go through Cloud Functions only — never from the client.
+      allow write: if false;
     }
 
     // All other paths are denied until later phases add explicit rules.

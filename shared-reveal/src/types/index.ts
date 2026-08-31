@@ -14,3 +14,14 @@ export interface UserDoc {
   updatedAt: Timestamp
   pairId: string | null
 }
+
+/** Shape of the Firestore pairs/{pairId} document. Written only by Cloud Functions. */
+export interface PairDoc {
+  createdBy: string
+  members: string[]
+  inviteCode: string
+  inviteCodeExpiry: Timestamp
+  inviteCodeUsed: boolean
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}

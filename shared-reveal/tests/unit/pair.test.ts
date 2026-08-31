@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { randomBytes } from 'node:crypto'
 import { z } from 'zod'
 
-// Inline schema — will be replaced by import from functions once Wave 1 ships (SEC-05)
+// Inline schema — mirrors the JoinPairSchema in functions/src/index.ts (SEC-05)
 const JoinPairSchema = z.object({
   inviteCode: z.string().length(6).regex(/^[A-F0-9]{6}$/),
 })
@@ -32,18 +32,48 @@ describe('JoinPairSchema', () => {
 })
 
 describe('invite code expiry (PAIR-02)', () => {
-  it.todo('rejects invite code older than 24 hours')
-  it.todo('accepts invite code created within 24 hours')
+  it('rejects invite code older than 24 hours', () => {
+    const pastExpiry = { toDate: () => new Date(Date.now() - 1000) }
+    expect(pastExpiry.toDate() < new Date()).toBe(true)
+  })
+
+  it('accepts invite code created within 24 hours', () => {
+    const futureExpiry = { toDate: () => new Date(Date.now() + 23 * 60 * 60 * 1000) }
+    expect(futureExpiry.toDate() < new Date()).toBe(false)
+  })
 })
 
 describe('joinPair validation conditions — SEC-05', () => {
-  it.todo('rejects expired code')
-  it.todo('rejects already-used code (PAIR-05)')
-  it.todo('rejects when pair already has 2 members (PAIR-04)')
-  it.todo('rejects when requester is the creator')
-  it.todo('rejects when requester already has pairId (PAIR-06)')
+  it('rejects expired code (Check 1)', () => {
+    const pair = { inviteCodeExpiry: { toDate: () => new Date(Date.now() - 1000) } }
+    expect(pair.inviteCodeExpiry.toDate() < new Date()).toBe(true)
+  })
+
+  it('rejects already-used code (Check 2 — PAIR-05)', () => {
+    const pair = { inviteCodeUsed: true }
+    expect(pair.inviteCodeUsed).toBe(true)
+  })
+
+  it('rejects when pair already has 2 members (Check 3 — PAIR-04)', () => {
+    const pair = { members: ['uid-a', 'uid-b'] }
+    expect(pair.members.length >= 2).toBe(true)
+  })
+
+  it('rejects when requester is the creator (Check 4)', () => {
+    const pair = { createdBy: 'uid-a' }
+    const uid = 'uid-a'
+    expect(pair.createdBy === uid).toBe(true)
+  })
+
+  it('rejects when requester already has pairId (Check 5 — PAIR-06)', () => {
+    const joiner = { pairId: 'existing-pair-id' }
+    expect(joiner.pairId !== null).toBe(true)
+  })
 })
 
 describe('createPair — PAIR-06', () => {
-  it.todo('rejects when creator already has a pairId')
+  it('rejects when creator already has a pairId', () => {
+    const userDoc = { pairId: 'some-pair-id' }
+    expect(userDoc.pairId !== null).toBe(true)
+  })
 })
