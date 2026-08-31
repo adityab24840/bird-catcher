@@ -45,6 +45,7 @@ export default function HomePage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [revealing, setRevealing] = useState(false)
   const [revealError, setRevealError] = useState<string | null>(null)
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -134,6 +135,8 @@ export default function HomePage() {
     }
   }
 
+  // handleSignOut removed — replaced by inline sign-out in the confirmation sheet
+
   async function handleRevealAnyway() {
     setRevealing(true)
     setRevealError(null)
@@ -150,8 +153,11 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen bg-white">
       {/* Top bar */}
       <header className="flex items-center justify-between px-5 pt-12 pb-3 shrink-0">
-        <span className="text-lg font-bold tracking-tight text-gray-900">birds.eye</span>
-        <button onClick={() => signOutUser()} title="Sign out" className="rounded-full">
+        <div>
+          <span className="text-lg font-bold tracking-tight text-gray-900">birds.eye</span>
+          {todayLabel && <p className="text-xs text-gray-400 mt-0.5">{todayLabel}</p>}
+        </div>
+        <button onClick={() => setShowSignOutConfirm(true)} className="rounded-full" title="Account">
           <Avatar photoURL={user?.photoURL ?? null} name={user?.displayName ?? null} size="sm" />
         </button>
       </header>
@@ -220,8 +226,7 @@ export default function HomePage() {
           /* ── SUBMIT FORM ── */
           <div className="space-y-4 pt-1 pb-4">
             <div>
-              <p className="text-2xl font-bold text-gray-900">Today</p>
-              <p className="text-sm text-gray-400">{todayLabel}</p>
+              <p className="text-xl font-bold text-gray-900">What reminded you?</p>
             </div>
 
             {/* Hidden file input */}
@@ -322,6 +327,34 @@ export default function HomePage() {
           <span className="text-[10px] font-medium">Timeline</span>
         </button>
       </nav>
+
+      {/* Sign-out confirmation sheet */}
+      {showSignOutConfirm && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/30" onClick={() => setShowSignOutConfirm(false)}>
+          <div className="rounded-t-3xl bg-white px-5 pb-10 pt-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-gray-200" />
+            <div className="mb-4 flex items-center gap-3">
+              <Avatar photoURL={user?.photoURL ?? null} name={user?.displayName ?? null} size="md" />
+              <div>
+                <p className="font-semibold text-gray-900">{user?.displayName ?? '—'}</p>
+                <p className="text-xs text-gray-400">{user?.email ?? ''}</p>
+              </div>
+            </div>
+            <button
+              onClick={async () => { setShowSignOutConfirm(false); await signOutUser() }}
+              className="w-full rounded-2xl border border-red-100 py-3.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+            >
+              Sign out
+            </button>
+            <button
+              onClick={() => setShowSignOutConfirm(false)}
+              className="mt-2 w-full rounded-2xl py-3 text-sm text-gray-400 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

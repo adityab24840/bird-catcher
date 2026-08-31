@@ -20,6 +20,7 @@ import PairSetupPage from './pages/PairSetupPage'
 import TimelinePage from './pages/TimelinePage'
 import OfflineBanner from './components/OfflineBanner'
 import IOSInstallBanner from './components/IOSInstallBanner'
+import UpdateBanner from './components/UpdateBanner'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -37,6 +38,7 @@ export default function App() {
 
   return (
     <>
+      <UpdateBanner />
       <OfflineBanner />
       <IOSInstallBanner />
       <Routes>
