@@ -77,7 +77,7 @@ function AttachChip({ icon, label, active, dot, disabled, onClick }: {
   return (
     <button type="button" onClick={onClick} disabled={disabled}
       className="relative flex flex-col items-center gap-1 py-3 rounded-2xl text-[9px] font-bold tracking-[0.07em] uppercase transition-all active:scale-95 disabled:opacity-40"
-      style={{ background: active ? '#E8F0E9' : '#F8F5F0', border: `1.5px solid ${active ? '#8FAF8A' : '#E8E2D9'}`, color: active ? '#2D5A3D' : '#7A7268' }}
+      style={{ background: active ? 'var(--c-green-light)' : 'var(--c-bg-surface)', border: `1.5px solid ${active ? 'var(--c-green-mid)' : 'var(--c-border)'}`, color: active ? 'var(--c-green)' : 'var(--c-text-2)' }}
     >
       <span className="text-lg leading-none">{icon}</span>
       <span>{label}</span>
@@ -163,7 +163,7 @@ function ResubmitForm({
       <button type="button" onClick={() => fileInputRef.current?.click()}
         disabled={submitting || uploadingPhoto}
         className="relative w-full h-36 rounded-xl overflow-hidden flex items-center justify-center disabled:opacity-50 transition-all active:scale-[0.99]"
-        style={{ border: '1.5px dashed #C9BFA8', background: '#F2EDE4' }}
+        style={{ border: '1.5px dashed var(--c-border-mid)', background: 'var(--c-bg)' }}
       >
         {photoPreview ? (
           <>
@@ -176,7 +176,7 @@ function ResubmitForm({
         ) : (
           <div className="text-center select-none">
             <div className="text-2xl mb-1">📷</div>
-            <p className="text-[11px] tracking-[0.1em] uppercase font-medium" style={{ color: '#7A7268' }}>tap to add photo</p>
+            <p className="text-[11px] tracking-[0.1em] uppercase font-medium" style={{ color: 'var(--c-text-2)' }}>tap to add photo</p>
           </div>
         )}
       </button>
@@ -185,7 +185,7 @@ function ResubmitForm({
       <textarea value={submissionText} onChange={(e) => onTextChange(e.target.value.slice(0, 500))}
         placeholder="Add another thought..." disabled={submitting || uploadingPhoto} rows={2}
         className="w-full rounded-xl px-4 py-3 text-[15px] resize-none focus:outline-none disabled:opacity-50"
-        style={{ border: '1px solid #C9BFA8', background: '#FFFFFF', color: '#1A1A16' }}
+        style={{ border: '1px solid var(--c-border-mid)', background: 'var(--c-bg-card)', color: 'var(--c-text-1)' }}
       />
 
       {/* Mood */}
@@ -194,7 +194,7 @@ function ResubmitForm({
           <button key={key} type="button" onClick={() => onMoodChange(selectedMood === key ? null : key)}
             disabled={submitting || uploadingPhoto}
             className="flex-1 py-2.5 rounded-xl text-xl transition-all active:scale-90"
-            style={{ background: selectedMood === key ? '#E8F0E9' : '#F8F5F0', border: `1.5px solid ${selectedMood === key ? '#2D5A3D' : '#E8E2D9'}` }}
+            style={{ background: selectedMood === key ? 'var(--c-green-light)' : 'var(--c-bg-surface)', border: `1.5px solid ${selectedMood === key ? 'var(--c-green)' : 'var(--c-border)'}` }}
           >{emoji}</button>
         ))}
       </div>
@@ -231,10 +231,10 @@ function ResubmitForm({
       {/* Location pill */}
       {locationData && (
         <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 animate-fadeIn"
-          style={{ background: '#E8F0E9', border: '1.5px solid #8FAF8A' }}>
+          style={{ background: 'var(--c-green-light)', border: '1.5px solid var(--c-green-mid)' }}>
           <span>📍</span>
           <span className="flex-1 text-sm font-medium" style={{ color: '#2D5A3D' }}>{locationData.lat.toFixed(4)}, {locationData.lng.toFixed(4)}</span>
-          <button type="button" onClick={() => onLocation(null)} className="text-sm shrink-0 transition-all active:scale-90" style={{ color: '#7A7268' }}>×</button>
+          <button type="button" onClick={() => onLocation(null)} className="text-sm shrink-0 transition-all active:scale-90" style={{ color: 'var(--c-text-2)' }}>×</button>
         </div>
       )}
 
@@ -242,17 +242,17 @@ function ResubmitForm({
       <div style={{ maxHeight: showSongInput ? '120px' : 0, overflow: 'hidden', transition: 'max-height 0.25s ease' }}>
         <div className="pt-1">
           {songURL ? (
-            <div className="flex items-center gap-2 rounded-xl px-4 py-2.5" style={{ background: '#E8F0E9', border: '1.5px solid #8FAF8A' }}>
+            <div className="flex items-center gap-2 rounded-xl px-4 py-2.5" style={{ background: 'var(--c-green-light)', border: '1.5px solid var(--c-green-mid)' }}>
               <span>🎵</span>
               <span className="flex-1 text-sm font-medium truncate" style={{ color: '#2D5A3D' }}>{songURL.replace('https://open.spotify.com/', '')}</span>
-              <button type="button" onClick={() => { onSongURL(null); onSongInput('') }} className="text-sm shrink-0 transition-all active:scale-90" style={{ color: '#7A7268' }}>×</button>
+              <button type="button" onClick={() => { onSongURL(null); onSongInput('') }} className="text-sm shrink-0 transition-all active:scale-90" style={{ color: 'var(--c-text-2)' }}>×</button>
             </div>
           ) : (
             <div className="flex gap-2">
               <input type="url" value={songInput} onChange={(e) => onSongInput(e.target.value)}
                 placeholder="open.spotify.com/track/…" disabled={submitting}
                 className="flex-1 rounded-xl px-4 py-2.5 text-sm focus:outline-none disabled:opacity-50"
-                style={{ border: '1.5px solid #E8E2D9', background: '#F8F5F0', color: '#1A1A16' }} />
+                style={{ border: '1.5px solid var(--c-border)', background: 'var(--c-bg-surface)', color: 'var(--c-text-1)' }} />
               <button type="button" disabled={!songInput.trim() || submitting}
                 onClick={() => { const p = parseSpotifyURL(songInput.trim()); if (p) { onSongURL(p); onSongInput('') } }}
                 className="rounded-xl px-4 py-2.5 text-sm font-bold transition-all active:scale-95 disabled:opacity-40"
@@ -412,7 +412,7 @@ function SketchPad({ onBlob, disabled }: { onBlob: (blob: Blob | null) => void; 
         {hasStrokes && (
           <button type="button" onClick={clear}
             className="text-xs px-2.5 py-1 rounded-lg ml-1"
-            style={{ background: '#F2EDE4', border: '1px solid #C9BFA8', color: '#7A7268' }}>
+            style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-mid)', color: 'var(--c-text-2)' }}>
             Clear
           </button>
         )}
@@ -426,7 +426,7 @@ function SketchPad({ onBlob, disabled }: { onBlob: (blob: Blob | null) => void; 
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         className="w-full rounded-xl"
-        style={{ touchAction: 'none', border: '1.5px solid #E8E2D9', cursor: 'crosshair', display: 'block' }}
+        style={{ touchAction: 'none', border: '1.5px solid var(--c-border)', cursor: 'crosshair', display: 'block' }}
       />
     </div>
   )
@@ -497,11 +497,11 @@ function VoiceRecorder({
     <div>
       {previewUrl ? (
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 animate-fadeIn"
-          style={{ background: '#F8F5F0', border: '1.5px solid #E8E2D9' }}>
+          style={{ background: 'var(--c-bg-surface)', border: '1.5px solid var(--c-border)' }}>
           <audio src={previewUrl} controls className="flex-1 h-8" style={{ minWidth: 0 }} />
           <button type="button" onClick={clearPreview}
             className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-90"
-            style={{ background: '#F2EDE4', border: '1px solid #C9BFA8', color: '#7A7268' }}>
+            style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-mid)', color: 'var(--c-text-2)' }}>
             ×
           </button>
         </div>
@@ -520,7 +520,7 @@ function VoiceRecorder({
       ) : (
         <button type="button" onClick={startRecording} disabled={disabled}
           className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all active:scale-95 disabled:opacity-40"
-          style={{ background: '#F8F5F0', border: '1.5px solid #E8E2D9', color: '#7A7268' }}>
+          style={{ background: 'var(--c-bg-surface)', border: '1.5px solid var(--c-border)', color: 'var(--c-text-2)' }}>
           <span className="text-base">🎙️</span>
           <span>Tap to record</span>
         </button>
@@ -884,7 +884,7 @@ export default function HomePage() {
           )}
           {daysTogether !== null && (
             <p className="text-[10px] tracking-[0.12em] mt-0.5 uppercase" style={{ color: 'var(--c-green-mid)' }}>
-              Day {daysTogether}{revealedStreak >= 2 ? ` · 🔥 ${revealedStreak}` : ' · building this 🌱'}
+              Day {daysTogether}{revealedStreak >= 2 ? ` · 🔥 ${revealedStreak}` : ''}
             </p>
           )}
         </div>
@@ -909,14 +909,14 @@ export default function HomePage() {
         {partnerStreak >= 3 && (
           <div
             className="mb-4 rounded-xl px-4 py-3 flex items-center gap-3 border"
-            style={{ background: '#E8F0E9', borderColor: '#8FAF8A' }}
+            style={{ background: 'var(--c-green-light)', borderColor: 'var(--c-green-mid)' }}
           >
             <span className="text-xl">🌿</span>
             <div>
-              <p className="text-sm font-semibold" style={{ color: '#2D5A3D' }}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--c-green)' }}>
                 {partnerFirstName} missed {partnerStreak} days
               </p>
-              <p className="text-xs mt-0.5" style={{ color: '#7A7268' }}>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
                 You're owed a dare — make them do anything!
               </p>
             </div>
@@ -925,14 +925,14 @@ export default function HomePage() {
         {myStreak >= 3 && (
           <div
             className="mb-4 rounded-xl px-4 py-3 flex items-center gap-3 border"
-            style={{ background: '#FAF0EB', borderColor: '#C9BFA8' }}
+            style={{ background: 'var(--c-bg-surface)', borderColor: 'var(--c-border-mid)' }}
           >
             <span className="text-xl">🌱</span>
             <div>
               <p className="text-sm font-semibold" style={{ color: '#B85C38' }}>
                 You missed {myStreak} days
               </p>
-              <p className="text-xs mt-0.5" style={{ color: '#7A7268' }}>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
                 {partnerFirstName} gets to dare you — better check in!
               </p>
             </div>
@@ -953,13 +953,13 @@ export default function HomePage() {
           <div className="flex flex-col items-center text-center gap-5 pt-6 animate-fadeUp">
             <div
               className="w-full rounded-2xl px-5 py-6 text-center animate-popIn"
-              style={{ background: '#E8F0E9', border: '1px solid #8FAF8A' }}
+              style={{ background: 'var(--c-green-light)', border: '1px solid var(--c-green-mid)' }}
             >
               <p className="text-3xl mb-2">🌿</p>
-              <p className="text-base font-bold tracking-[0.1em] uppercase" style={{ color: '#1C2B1E' }}>
+              <p className="text-base font-bold tracking-[0.1em] uppercase" style={{ color: 'var(--c-text-1)' }}>
                 Revealed
               </p>
-              <p className="text-xs tracking-widest uppercase mt-1 font-medium" style={{ color: '#2D5A3D' }}>
+              <p className="text-xs tracking-widest uppercase mt-1 font-medium" style={{ color: 'var(--c-green)' }}>
                 {todayLabel}
               </p>
             </div>
@@ -970,7 +970,7 @@ export default function HomePage() {
             >
               Open Timeline
             </button>
-            <div className="w-full" style={{ borderTop: '1px solid #C9BFA8' }} />
+            <div className="w-full" style={{ borderTop: '1px solid var(--c-border-mid)' }} />
             {!showResubmitForm ? (
               <button
                 onClick={() => setShowResubmitForm(true)}
@@ -1032,7 +1032,7 @@ export default function HomePage() {
             {pingReceived && (
               <div className="animate-popIn text-center" style={{ marginBottom: -8 }}>
                 <span className="text-2xl" style={{ animation: 'leafFloat 2.5s ease forwards', display: 'inline-block' }}>💭</span>
-                <p className="text-[10px] tracking-widest uppercase mt-1" style={{ color: '#7A7268' }}>
+                <p className="text-[10px] tracking-widest uppercase mt-1" style={{ color: 'var(--c-text-2)' }}>
                   {partnerFirstName} is thinking of you
                 </p>
               </div>
@@ -1082,7 +1082,7 @@ export default function HomePage() {
             </div>
 
             <div>
-              <p className="text-base font-semibold" style={{ color: '#1A1A16' }}>
+              <p className="text-base font-semibold" style={{ color: 'var(--c-text-1)' }}>
                 {partnerDoc?.displayName?.split(' ')[0] ?? '…'}
               </p>
               {partnerSubmitted ? (
@@ -1090,7 +1090,7 @@ export default function HomePage() {
                   They shared too ✓
                 </p>
               ) : (
-                <p className="text-sm mt-1 flex items-center justify-center gap-0.5" style={{ color: '#7A7268' }}>
+                <p className="text-sm mt-1 flex items-center justify-center gap-0.5" style={{ color: 'var(--c-text-2)' }}>
                   Waiting
                   <span style={{ animation: 'blink 1.4s ease infinite', display: 'inline-block' }}>.</span>
                   <span style={{ animation: 'blink 1.4s ease 0.2s infinite', display: 'inline-block' }}>.</span>
@@ -1115,14 +1115,14 @@ export default function HomePage() {
                 }}
                 disabled={pinging || pingCooldown}
                 className="text-xs font-medium px-5 py-2 rounded-full transition-all active:scale-95 disabled:opacity-40"
-                style={{ background: '#F2EDE4', border: '1px solid #C9BFA8', color: '#7A7268' }}
+                style={{ background: 'var(--c-bg)', border: '1px solid var(--c-border-mid)', color: 'var(--c-text-2)' }}
               >
                 {pingCooldown ? '💭 sent' : pinging ? '…' : '💭 thinking of you'}
               </button>
             )}
 
             {/* Divider */}
-            <div className="w-full" style={{ borderTop: '1px solid #C9BFA8' }} />
+            <div className="w-full" style={{ borderTop: '1px solid var(--c-border-mid)' }} />
 
             <div className="w-full space-y-2">
               {!showResubmitForm && (
@@ -1187,7 +1187,7 @@ export default function HomePage() {
             {daysTogether === 1 && (
               <div
                 className="rounded-2xl px-5 py-5 animate-fadeIn"
-                style={{ background: '#E8F0E9', border: '1px solid #8FAF8A' }}
+                style={{ background: 'var(--c-green-light)', border: '1px solid var(--c-green-mid)' }}
               >
                 <p className="text-2xl mb-2">🌿</p>
                 <p className="text-sm font-bold" style={{ color: '#1C2B1E' }}>Welcome. You go first.</p>
@@ -1199,7 +1199,7 @@ export default function HomePage() {
             )}
             <p
               className="text-[10px] tracking-[0.2em] uppercase font-semibold"
-              style={{ color: '#7A7268' }}
+              style={{ color: 'var(--c-text-2)' }}
             >
               What reminded you today?
             </p>
@@ -1219,7 +1219,7 @@ export default function HomePage() {
               onClick={() => fileInputRef.current?.click()}
               disabled={submitting || uploadingPhoto}
               className="relative w-full h-52 rounded-xl overflow-hidden flex items-center justify-center disabled:opacity-50 transition-all active:scale-[0.98]"
-              style={{ border: '1.5px dashed #C9BFA8', background: '#F2EDE4' }}
+              style={{ border: '1.5px dashed var(--c-border-mid)', background: 'var(--c-bg)' }}
             >
               {photoPreview ? (
                 <>
@@ -1240,11 +1240,11 @@ export default function HomePage() {
                   <div className="text-3xl mb-2">📷</div>
                   <p
                     className="text-[11px] tracking-[0.1em] uppercase font-medium"
-                    style={{ color: '#7A7268' }}
+                    style={{ color: 'var(--c-text-2)' }}
                   >
                     tap to add photo
                   </p>
-                  <p className="text-[10px] mt-0.5" style={{ color: '#C9BFA8' }}>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--c-text-3)' }}>
                     optional
                   </p>
                 </div>
@@ -1261,17 +1261,17 @@ export default function HomePage() {
                 rows={3}
                 className="w-full rounded-xl px-4 py-3 text-[15px] leading-relaxed resize-none focus:outline-none disabled:opacity-50"
                 style={{
-                  border: '1px solid #C9BFA8',
-                  background: '#FFFFFF',
-                  color: '#1A1A16',
+                  border: '1px solid var(--c-border-mid)',
+                  background: 'var(--c-bg-card)',
+                  color: 'var(--c-text-1)',
                 }}
               />
               {submissionText.length > 0 ? (
-                <p className="text-[10px] text-right mt-1" style={{ color: '#C9BFA8' }}>
+                <p className="text-[10px] text-right mt-1" style={{ color: 'var(--c-text-3)' }}>
                   {submissionText.length}/500
                 </p>
               ) : todayPrompt ? (
-                <p className="text-[11px] italic mt-1.5 leading-relaxed animate-fadeIn" style={{ color: '#C9BFA8' }}>
+                <p className="text-[11px] italic mt-1.5 leading-relaxed animate-fadeIn" style={{ color: 'var(--c-text-3)' }}>
                   💭 {todayPrompt}
                 </p>
               ) : null}
@@ -1279,7 +1279,7 @@ export default function HomePage() {
 
             {/* Mood picker */}
             <div>
-              <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: '#C9BFA8' }}>
+              <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>
                 How are you feeling?
               </p>
               <div className="flex gap-2">
@@ -1313,7 +1313,7 @@ export default function HomePage() {
               ]
               return (
                 <div>
-                  <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: '#C9BFA8' }}>Tag it</p>
+                  <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>Tag it</p>
                   <div className="flex flex-wrap gap-2">
                     {TAG_OPTIONS.map(({ key, label }) => {
                       const active = selectedTags.includes(key)
@@ -1325,9 +1325,9 @@ export default function HomePage() {
                           onClick={() => setSelectedTags((prev) => active ? prev.filter((t) => t !== key) : [...prev, key])}
                           className="rounded-full px-3 py-1.5 text-xs font-medium transition-all active:scale-95 disabled:opacity-40"
                           style={{
-                            background: active ? '#E8F0E9' : '#F8F5F0',
-                            border: `1.5px solid ${active ? '#2D5A3D' : '#E8E2D9'}`,
-                            color: active ? '#2D5A3D' : '#7A7268',
+                            background: active ? 'var(--c-green-light)' : 'var(--c-bg-surface)',
+                            border: `1.5px solid ${active ? 'var(--c-green)' : 'var(--c-border)'}`,
+                            color: active ? 'var(--c-green)' : 'var(--c-text-2)',
                           }}
                         >
                           {label}
@@ -1373,10 +1373,10 @@ export default function HomePage() {
             {/* Location pill */}
             {locationData && (
               <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 animate-fadeIn"
-                style={{ background: '#E8F0E9', border: '1.5px solid #8FAF8A' }}>
+                style={{ background: 'var(--c-green-light)', border: '1.5px solid var(--c-green-mid)' }}>
                 <span>📍</span>
                 <span className="flex-1 text-sm font-medium" style={{ color: '#2D5A3D' }}>{locationData.lat.toFixed(4)}, {locationData.lng.toFixed(4)}</span>
-                <button type="button" onClick={() => setLocationData(null)} className="text-sm shrink-0 transition-all active:scale-90" style={{ color: '#7A7268' }}>×</button>
+                <button type="button" onClick={() => setLocationData(null)} className="text-sm shrink-0 transition-all active:scale-90" style={{ color: 'var(--c-text-2)' }}>×</button>
               </div>
             )}
 
@@ -1384,17 +1384,17 @@ export default function HomePage() {
             <div style={{ maxHeight: showSongInput ? '120px' : 0, overflow: 'hidden', transition: 'max-height 0.25s ease' }}>
               <div className="pt-1">
                 {songURL ? (
-                  <div className="flex items-center gap-2 rounded-xl px-4 py-2.5" style={{ background: '#E8F0E9', border: '1.5px solid #8FAF8A' }}>
+                  <div className="flex items-center gap-2 rounded-xl px-4 py-2.5" style={{ background: 'var(--c-green-light)', border: '1.5px solid var(--c-green-mid)' }}>
                     <span>🎵</span>
                     <span className="flex-1 text-sm font-medium truncate" style={{ color: '#2D5A3D' }}>{songURL.replace('https://open.spotify.com/', '')}</span>
-                    <button type="button" onClick={() => { setSongURL(null); setSongInput('') }} className="text-sm shrink-0 transition-all active:scale-90" style={{ color: '#7A7268' }}>×</button>
+                    <button type="button" onClick={() => { setSongURL(null); setSongInput('') }} className="text-sm shrink-0 transition-all active:scale-90" style={{ color: 'var(--c-text-2)' }}>×</button>
                   </div>
                 ) : (
                   <div className="flex gap-2">
                     <input type="url" value={songInput} onChange={(e) => setSongInput(e.target.value)}
                       placeholder="open.spotify.com/track/…" disabled={submitting}
                       className="flex-1 rounded-xl px-4 py-2.5 text-sm focus:outline-none disabled:opacity-50"
-                      style={{ border: '1.5px solid #E8E2D9', background: '#F8F5F0', color: '#1A1A16' }} />
+                      style={{ border: '1.5px solid var(--c-border)', background: 'var(--c-bg-surface)', color: 'var(--c-text-1)' }} />
                     <button type="button" disabled={!songInput.trim() || submitting}
                       onClick={() => {
                         const parsed = parseSpotifyURL(songInput.trim())
@@ -1435,18 +1435,18 @@ export default function HomePage() {
               >
                 <div
                   className="flex items-center gap-2 px-3 py-2 border-b"
-                  style={{ background: '#F2EDE4', borderColor: '#C9BFA8' }}
+                  style={{ background: 'var(--c-bg)', borderColor: 'var(--c-border-mid)' }}
                 >
                   <Avatar photoURL={partnerDoc?.photoURL ?? null} name={partnerDoc?.displayName ?? null} size="sm" />
-                  <p className="text-[11px] tracking-[0.1em] uppercase font-semibold" style={{ color: '#2D5A3D' }}>
+                  <p className="text-[11px] tracking-[0.1em] uppercase font-semibold" style={{ color: 'var(--c-green)' }}>
                     {partnerFirstName} already shared something ✓
                   </p>
                 </div>
                 <div
                   className="px-4 py-5 flex items-center justify-center"
-                  style={{ background: '#F8F5F0' }}
+                  style={{ background: 'var(--c-bg-surface)' }}
                 >
-                  <p className="text-xs text-center" style={{ color: '#7A7268' }}>
+                  <p className="text-xs text-center" style={{ color: 'var(--c-text-2)' }}>
                     Share yours to reveal what they sent
                   </p>
                 </div>
@@ -1460,7 +1460,7 @@ export default function HomePage() {
       {userDoc?.pairId && (
         <div
           className="shrink-0 px-5 py-3 border-t"
-          style={{ background: '#F8F5F0', borderColor: '#E8E2D4' }}
+          style={{ background: 'var(--c-bg-surface)', borderColor: 'var(--c-border)' }}
         >
           {editingNote ? (
             <div className="flex flex-col gap-2">
@@ -1471,13 +1471,13 @@ export default function HomePage() {
                 rows={2}
                 autoFocus
                 className="w-full rounded-lg px-3 py-2 text-sm resize-none focus:outline-none"
-                style={{ border: '1px solid #C9BFA8', background: '#fff', color: '#1A1A16' }}
+                style={{ border: '1px solid var(--c-border-mid)', background: 'var(--c-bg-card)', color: 'var(--c-text-1)' }}
               />
               <div className="flex gap-2">
                 <button
                   onClick={() => { setEditingNote(false); setNoteText(pairDoc?.pinnedNote ?? '') }}
                   className="flex-1 rounded-lg py-1.5 text-xs font-medium"
-                  style={{ border: '1px solid #C9BFA8', color: '#7A7268' }}
+                  style={{ border: '1px solid var(--c-border-mid)', color: 'var(--c-text-2)' }}
                 >
                   Cancel
                 </button>
@@ -1578,7 +1578,7 @@ export default function HomePage() {
         >
           <div
             className="rounded-t-3xl px-5 pb-10 pt-5 shadow-xl"
-            style={{ background: '#FFFFFF' }}
+            style={{ background: 'var(--c-bg-card)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div
@@ -1592,10 +1592,10 @@ export default function HomePage() {
                 size="md"
               />
               <div>
-                <p className="font-semibold text-sm" style={{ color: '#1A1A16' }}>
+                <p className="font-semibold text-sm" style={{ color: 'var(--c-text-1)' }}>
                   {user?.displayName ?? '—'}
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: '#7A7268' }}>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--c-text-2)' }}>
                   {user?.email ?? ''}
                 </p>
               </div>
@@ -1605,9 +1605,9 @@ export default function HomePage() {
             {userDoc?.pairId && (
               <div
                 className="mb-4 rounded-xl px-4 py-3"
-                style={{ background: '#F8F5F0', border: '1px solid #E8E2D4' }}
+                style={{ background: 'var(--c-bg-surface)', border: '1px solid var(--c-border)' }}
               >
-                <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: '#C9BFA8' }}>
+                <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>
                   What do you call yourselves?
                 </p>
                 {editingPairName ? (
@@ -1618,7 +1618,7 @@ export default function HomePage() {
                       placeholder="e.g. us, home, ..."
                       autoFocus
                       className="flex-1 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-                      style={{ border: '1px solid #C9BFA8', background: '#fff', color: '#1A1A16' }}
+                      style={{ border: '1px solid var(--c-border-mid)', background: 'var(--c-bg-card)', color: 'var(--c-text-1)' }}
                     />
                     <button
                       disabled={savingPairName}
@@ -1641,7 +1641,7 @@ export default function HomePage() {
                     <button
                       onClick={() => setEditingPairName(false)}
                       className="rounded-lg px-2 py-1.5 text-sm"
-                      style={{ color: '#7A7268' }}
+                      style={{ color: 'var(--c-text-2)' }}
                     >
                       ✕
                     </button>
@@ -1663,14 +1663,14 @@ export default function HomePage() {
             {user && (
               <div
                 className="mb-4 rounded-xl px-4 py-3"
-                style={{ background: '#F8F5F0', border: '1px solid #E8E2D4' }}
+                style={{ background: 'var(--c-bg-surface)', border: '1px solid var(--c-border)' }}
               >
-                <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: '#C9BFA8' }}>
+                <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: 'var(--c-text-3)' }}>
                   Daily reminder
                 </p>
                 {userDoc?.reminderTime ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm flex-1" style={{ color: '#1A1A16' }}>
+                    <span className="text-sm flex-1" style={{ color: 'var(--c-text-1)' }}>
                       🔔 {formatHour(userDoc.reminderTime.hour)} every day
                     </span>
                     <button
@@ -1686,7 +1686,7 @@ export default function HomePage() {
                         setSavingReminder(false)
                       }}
                       className="text-xs px-2.5 py-1 rounded-lg"
-                      style={{ border: '1px solid #C9BFA8', color: '#7A7268' }}
+                      style={{ border: '1px solid var(--c-border-mid)', color: 'var(--c-text-2)' }}
                     >
                       {savingReminder ? '…' : 'Turn off'}
                     </button>
@@ -1698,7 +1698,7 @@ export default function HomePage() {
                       value={reminderInput}
                       onChange={(e) => setReminderInput(e.target.value)}
                       className="flex-1 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-                      style={{ border: '1px solid #C9BFA8', background: '#fff', color: '#1A1A16' }}
+                      style={{ border: '1px solid var(--c-border-mid)', background: 'var(--c-bg-card)', color: 'var(--c-text-1)' }}
                     />
                     <button
                       disabled={!reminderInput || savingReminder}
@@ -1739,7 +1739,7 @@ export default function HomePage() {
             <button
               onClick={() => setShowSignOutConfirm(false)}
               className="mt-2 w-full rounded-lg py-3 text-sm transition-colors"
-              style={{ color: '#7A7268' }}
+              style={{ color: 'var(--c-text-2)' }}
             >
               Cancel
             </button>
@@ -1751,13 +1751,13 @@ export default function HomePage() {
                   <button
                     onClick={() => { setShowLeaveConfirm(true); setLeaveError(null) }}
                     className="w-full text-xs py-2 transition-colors"
-                    style={{ color: '#C9BFA8' }}
+                    style={{ color: 'var(--c-text-3)' }}
                   >
                     Leave pair
                   </button>
                 ) : (
                   <div className="space-y-3">
-                    <p className="text-xs text-center leading-relaxed" style={{ color: '#7A7268' }}>
+                    <p className="text-xs text-center leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
                       Both of you will lose access to this pair.{' '}
                       <button
                         onClick={() => { setShowSignOutConfirm(false); window.location.href = '/export' }}
@@ -1789,7 +1789,7 @@ export default function HomePage() {
                     <button
                       onClick={() => setShowLeaveConfirm(false)}
                       className="w-full py-2 text-xs"
-                      style={{ color: '#C9BFA8' }}
+                      style={{ color: 'var(--c-text-3)' }}
                     >
                       Cancel
                     </button>

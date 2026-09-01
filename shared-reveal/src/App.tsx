@@ -50,7 +50,7 @@ export default function App() {
       <UpdateBanner />
       <OfflineBanner />
       <IOSInstallBanner />
-      <OnboardingOverlay visible={!!user && !!pairId} />
+      <OnboardingOverlay visible={!!user && !!pairId} user={user} pairId={pairId} />
       <Routes>
         {/* / — signed out → Landing; signed in + no pair → /pair-setup; signed in + paired → /home */}
         <Route
