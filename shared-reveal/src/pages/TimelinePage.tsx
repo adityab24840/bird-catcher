@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { doc, onSnapshot, serverTimestamp, collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
+import { doc, onSnapshot, collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../firebase/config'
 import { useTimeline } from '../hooks/useTimeline'
@@ -204,10 +204,14 @@ function AudioPlayer({ url }: { url: string }) {
 function SubmissionCard({
   sub,
   member,
+  isFavorited,
+  onToggleFavorite,
   onPhotoTap,
 }: {
   sub: SubmissionDoc
   member: UserDoc | undefined
+  isFavorited: boolean
+  onToggleFavorite: () => void
   onPhotoTap: (url: string) => void
 }) {
   const ts = sub.updatedAt ?? sub.submittedAt
@@ -227,7 +231,7 @@ function SubmissionCard({
 
   return (
     <div
-      className="bg-white rounded-xl overflow-hidden border animate-fadeIn"
+      className="relative bg-white rounded-xl overflow-hidden border animate-fadeIn"
       style={{ borderColor: '#E8E2D4', boxShadow: '0 1px 6px rgba(28,43,30,0.06)' }}
     >
       {/* Card header */}
@@ -253,6 +257,19 @@ function SubmissionCard({
           </span>
         )}
       </div>
+      {/* Corner favourite button */}
+      <button
+        onClick={onToggleFavorite}
+        className="absolute top-2.5 right-2.5 h-8 w-8 rounded-full flex items-center justify-center text-base transition-transform active:scale-75"
+        style={{
+          background: isFavorited ? '#FDECEA' : 'rgba(255,255,255,0.85)',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.10)',
+          backdropFilter: 'blur(4px)',
+        }}
+        aria-label={isFavorited ? 'Unfavorite' : 'Favourite'}
+      >
+        {isFavorited ? '❤️' : '🤍'}
+      </button>
 
       {/* Photos */}
       {photos.map((url, i) => (
@@ -359,6 +376,8 @@ function DaySection({
   memberUids,
   memberDocs,
   currentUid,
+  favKeys,
+  onToggleFav,
   onPhotoTap,
 }: {
   entry: EntryDoc
@@ -366,6 +385,8 @@ function DaySection({
   memberUids: string[]
   memberDocs: Record<string, UserDoc>
   currentUid: string
+  favKeys: Set<string>
+  onToggleFav: (date: string, submitterUid: string) => void
   onPhotoTap: (url: string) => void
 }) {
   const [submissions, setSubmissions] = useState<SubmissionDoc[]>([])
@@ -396,7 +417,9 @@ function DaySection({
           } else {
             delete subMap[uid]
           }
-          setSubmissions(memberUids.map((u) => subMap[u]).filter((s): s is SubmissionDoc => s !== null && s !== undefined))
+          const sorted = memberUids.map((u) => subMap[u]).filter((s): s is SubmissionDoc => s !== null && s !== undefined)
+          sorted.sort((a, b) => (b.submittedAt?.toMillis?.() ?? 0) - (a.submittedAt?.toMillis?.() ?? 0))
+          setSubmissions(sorted)
         },
         (err) => {
           console.error('[DaySection] submission read error:', err)
@@ -426,25 +449,6 @@ function DaySection({
         >
           {dateLabel}
         </span>
-        {entry.status === 'revealed' && (
-          <button
-            aria-label="Favorite"
-            onClick={async () => {
-              const isFav = entry.favoritedBy?.includes(currentUid)
-              const ref = doc(db, `pairs/${pairId}/entries/${entry.date}`)
-              try {
-                await updateDoc(ref, {
-                  favoritedBy: isFav ? arrayRemove(currentUid) : arrayUnion(currentUid),
-                  updatedAt: serverTimestamp(),
-                })
-              } catch (e) { console.error(e) }
-            }}
-            className="shrink-0 transition-transform active:scale-75"
-            style={{ fontSize: 18, lineHeight: 1 }}
-          >
-            {entry.favoritedBy?.includes(currentUid) ? '❤️' : '🤍'}
-          </button>
-        )}
         <div className="flex-1 h-px" style={{ background: '#C9BFA8' }} />
       </div>
 
@@ -462,7 +466,14 @@ function DaySection({
       ) : (
         <div className="space-y-3">
           {submissions.map((sub) => (
-            <SubmissionCard key={sub.uid} sub={sub} member={memberDocs[sub.uid]} onPhotoTap={onPhotoTap} />
+            <SubmissionCard
+              key={sub.uid}
+              sub={sub}
+              member={memberDocs[sub.uid]}
+              isFavorited={favKeys.has(`${entry.date}/${sub.uid}`)}
+              onToggleFavorite={() => onToggleFav(entry.date, sub.uid)}
+              onPhotoTap={onPhotoTap}
+            />
           ))}
 
           {/* one_submitted: partner's blurred placeholder + reveal/waiting states */}
@@ -470,50 +481,51 @@ function DaySection({
             const partnerMember = partnerUid ? memberDocs[partnerUid] : undefined
             const partnerName = partnerMember?.displayName?.split(' ')[0] ?? 'Partner'
             if (partnerSubmitted && !iSubmitted) {
-              // Partner submitted, I haven't — show blurred placeholder + CTA
+              // Partner submitted, I haven't — tappable blurred tile
               return (
-                <div className="relative rounded-xl overflow-hidden border" style={{ borderColor: '#E8E2D4' }}>
-                  {/* Blurred fake content */}
-                  <div className="px-4 py-3 select-none" style={{ filter: 'blur(6px)', userSelect: 'none', pointerEvents: 'none' }}>
-                    <div className="h-4 rounded mb-2" style={{ background: '#C9BFA8', width: '80%' }} />
-                    <div className="h-4 rounded mb-2" style={{ background: '#C9BFA8', width: '60%' }} />
-                    <div className="h-4 rounded" style={{ background: '#C9BFA8', width: '70%' }} />
+                <button
+                  disabled={revealing}
+                  onClick={async () => {
+                    setRevealing(true)
+                    try { await revealAnywayFn({ entryDate: entry.date }) }
+                    catch { /* will retry */ }
+                    setRevealing(false)
+                  }}
+                  className="w-full relative rounded-xl overflow-hidden border text-left transition-all active:scale-[0.98] disabled:opacity-60"
+                  style={{ borderColor: '#E8E2D4', boxShadow: '0 1px 6px rgba(28,43,30,0.06)' }}
+                >
+                  {/* Fake blurred content */}
+                  <div className="px-4 py-4 space-y-2 select-none" style={{ filter: 'blur(8px)', userSelect: 'none' }}>
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-8 w-8 rounded-full" style={{ background: '#C9BFA8' }} />
+                      <div>
+                        <div className="h-3 rounded w-20 mb-1" style={{ background: '#C9BFA8' }} />
+                        <div className="h-2.5 rounded w-12" style={{ background: '#E8E2D9' }} />
+                      </div>
+                    </div>
+                    <div className="h-3.5 rounded" style={{ background: '#E8E2D9', width: '88%' }} />
+                    <div className="h-3.5 rounded" style={{ background: '#E8E2D9', width: '72%' }} />
+                    <div className="h-3.5 rounded" style={{ background: '#E8E2D9', width: '80%' }} />
                   </div>
-                  {/* Overlay */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3"
-                    style={{ background: 'rgba(242,237,228,0.75)', backdropFilter: 'blur(2px)' }}>
-                    <p className="text-sm font-semibold" style={{ color: '#1A1A16' }}>
-                      {partnerName} shared something ✓
+                  {/* Centre label */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5"
+                    style={{ backdropFilter: 'blur(1px)' }}>
+                    <span className="text-2xl">{revealing ? '…' : '🔒'}</span>
+                    <p className="text-xs font-semibold" style={{ color: '#1A1A16' }}>
+                      {revealing ? 'Revealing…' : `Tap to reveal ${partnerName}'s message`}
                     </p>
-                    <p className="text-xs text-center px-6" style={{ color: '#7A7268' }}>
-                      Add yours to reveal, or reveal now.
-                    </p>
-                    <button
-                      disabled={revealing}
-                      onClick={async () => {
-                        setRevealing(true)
-                        try { await revealAnywayFn({ entryDate: entry.date }) }
-                        catch { /* will retry */ }
-                        setRevealing(false)
-                      }}
-                      className="rounded-2xl px-5 py-2 text-xs font-bold text-white transition-all active:scale-95 disabled:opacity-50"
-                      style={{ background: '#2D5A3D' }}
-                    >
-                      {revealing ? '…' : 'Reveal Anyway'}
-                    </button>
                   </div>
-                </div>
+                </button>
               )
             }
             if (iSubmitted && !partnerSubmitted) {
-              // I submitted, partner hasn't — waiting card
+              // I submitted, partner hasn't — waiting tile
               return (
-                <div className="rounded-xl px-4 py-5 flex flex-col items-center gap-2 border border-dashed"
+                <div className="rounded-xl px-4 py-6 flex flex-col items-center gap-1.5 border border-dashed"
                   style={{ borderColor: '#C9BFA8' }}>
-                  <p className="text-sm" style={{ color: '#7A7268' }}>
-                    Waiting for {partnerName}…
-                  </p>
-                  <p className="text-xs" style={{ color: '#C9BFA8' }}>Their card will appear once they share</p>
+                  <span className="text-2xl">⏳</span>
+                  <p className="text-sm font-medium" style={{ color: '#7A7268' }}>Waiting for {partnerName}…</p>
+                  <p className="text-xs" style={{ color: '#C9BFA8' }}>Their tile appears once they share</p>
                 </div>
               )
             }
@@ -660,6 +672,8 @@ function CalendarView({
   memberDocs,
   memberUids,
   currentUid,
+  favKeys,
+  onToggleFav,
   onPhotoTap,
 }: {
   entries: EntryDoc[]
@@ -671,6 +685,8 @@ function CalendarView({
   memberDocs: Record<string, UserDoc>
   memberUids: string[]
   currentUid: string
+  favKeys: Set<string>
+  onToggleFav: (date: string, uid: string) => void
   onPhotoTap: (url: string) => void
 }) {
   const entryDates = new Set(entries.map((e) => e.date))
@@ -796,7 +812,7 @@ function CalendarView({
             <div className="flex-1 h-px" style={{ background: '#C9BFA8' }} />
           </div>
           {selectedEntry && (
-            <DaySection entry={selectedEntry} pairId={pairId} memberUids={memberUids} memberDocs={memberDocs} currentUid={currentUid} onPhotoTap={onPhotoTap} />
+            <DaySection entry={selectedEntry} pairId={pairId} memberUids={memberUids} memberDocs={memberDocs} currentUid={currentUid} favKeys={favKeys} onToggleFav={onToggleFav} onPhotoTap={onPhotoTap} />
           )}
         </div>
       )}
@@ -822,13 +838,27 @@ export default function TimelinePage() {
   const [summaryDismissed, setSummaryDismissed] = useState(false)
   const [lightbox, setLightbox] = useState<string | null>(null)
 
+  // Per-submission favorites — stored as "date/uid" strings in user doc
+  const myFavs: string[] = (user?.uid ? memberDocs[user.uid]?.favoriteSubmissions : undefined) ?? []
+  const favKeys = new Set(myFavs)
+
+  async function toggleFav(date: string, submitterUid: string) {
+    if (!user) return
+    const key = `${date}/${submitterUid}`
+    const isFav = favKeys.has(key)
+    const ref = doc(db, 'users', user.uid)
+    try {
+      await updateDoc(ref, { favoriteSubmissions: isFav ? arrayRemove(key) : arrayUnion(key) })
+    } catch (e) { console.error(e) }
+  }
+
   // Available months derived from entries (e.g. "2026-08")
   const availableMonths = Array.from(
     new Set(entries.map((e) => e.date.slice(0, 7)))
   ).sort((a, b) => b.localeCompare(a))
 
   const filteredEntries = entries.filter((e) => {
-    if (filterFavs && !e.favoritedBy?.includes(user?.uid ?? '')) return false
+    if (filterFavs && !myFavs.some((k) => k.startsWith(e.date + '/'))) return false
     if (filterMonth && !e.date.startsWith(filterMonth)) return false
     return true
   })
@@ -1052,6 +1082,8 @@ export default function TimelinePage() {
             memberDocs={memberDocs}
             memberUids={Object.keys(memberDocs)}
             currentUid={user?.uid ?? ''}
+            favKeys={favKeys}
+            onToggleFav={toggleFav}
             onPhotoTap={setLightbox}
           />
         ) : (
@@ -1119,6 +1151,8 @@ export default function TimelinePage() {
                 memberUids={Object.keys(memberDocs)}
                 memberDocs={memberDocs}
                 currentUid={user?.uid ?? ''}
+                favKeys={favKeys}
+                onToggleFav={toggleFav}
                 onPhotoTap={setLightbox}
               />
             ))}

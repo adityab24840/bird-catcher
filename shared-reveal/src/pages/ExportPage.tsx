@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, getDocs, query, orderBy, where, doc, getDoc } from 'firebase/firestore'
+import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../firebase/config'
 import { useAuth } from '../hooks/useAuth'
@@ -74,11 +74,12 @@ export default function ExportPage() {
         const entriesSnap = await getDocs(
           query(
             collection(db, 'pairs', pid, 'entries'),
-            where('status', '==', 'revealed'),
-            orderBy('date', 'asc')
+            where('status', '==', 'revealed')
           )
         )
-        const entries = entriesSnap.docs.map((d) => d.data() as EntryDoc)
+        const entries = entriesSnap.docs
+          .map((d) => d.data() as EntryDoc)
+          .sort((a, b) => a.date.localeCompare(b.date))
 
         const exportData = await Promise.all(
           entries.map(async (entry) => {

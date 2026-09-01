@@ -24,6 +24,7 @@ export interface UserDoc {
   fcmToken: string | null
   reminderTime?: { hour: number; tz: string } | null
   lastDissolvedAt?: Timestamp | null
+  favoriteSubmissions?: string[]
 }
 
 /** Shape of the Firestore pairs/{pairId} document. Written only by Cloud Functions. */
