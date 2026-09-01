@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, orderBy, query, where, limit } from 'firebase/firestore'
 import { db } from '../firebase/config'
 
 interface StreakState {
@@ -77,4 +77,29 @@ export function useStreak(
   }, [pairId, myUid, partnerUid])
 
   return streaks
+}
+
+export function useRevealedStreak(pairId: string | null): number {
+  const [streak, setStreak] = useState(0)
+
+  useEffect(() => {
+    if (!pairId) { setStreak(0); return }
+    getDocs(
+      query(collection(db, `pairs/${pairId}/entries`), orderBy('date', 'desc'), limit(90))
+    ).then(snap => {
+      const revealed = new Set(
+        snap.docs.filter(d => d.data().status === 'revealed').map(d => d.data().date as string)
+      )
+      let count = 0
+      const d = new Date()
+      for (let i = 0; i < 90; i++) {
+        const dateStr = d.toLocaleDateString('en-CA')
+        if (revealed.has(dateStr)) { count++; d.setDate(d.getDate() - 1) }
+        else { break }
+      }
+      setStreak(count)
+    }).catch(() => {})
+  }, [pairId])
+
+  return streak
 }

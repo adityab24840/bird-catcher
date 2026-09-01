@@ -37,6 +37,20 @@ export default function PairSetupPage() {
     }
   }
 
+  async function handleShare() {
+    if (!inviteCode) return
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Bird Eye',
+          text: `Join my Bird Eye — enter code ${inviteCode} at the app.`,
+        })
+      } catch { /* cancelled */ }
+    } else {
+      await handleCopy()
+    }
+  }
+
   async function handleJoin(code: string) {
     if (joining) return
     setJoining(true)
@@ -107,12 +121,20 @@ export default function PairSetupPage() {
                 </p>
               </div>
             )}
-            <button
-              onClick={handleCopy}
-              className="mb-4 w-full rounded-xl bg-purple-500 py-3 text-sm font-medium text-white hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-            >
-              {copied ? 'Copied!' : 'Copy code'}
-            </button>
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={handleCopy}
+                className="flex-1 rounded-xl bg-purple-500 py-3 text-sm font-medium text-white hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+              <button
+                onClick={handleShare}
+                className="flex-1 rounded-xl border-2 border-purple-500 py-3 text-sm font-medium text-purple-600 hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              >
+                Share ↗
+              </button>
+            </div>
             <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-purple-500" />
               Waiting for your partner…

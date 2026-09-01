@@ -33,12 +33,37 @@ function Avatar({ photoURL, name }: { photoURL: string | null; name: string | nu
   )
 }
 
+function PhotoLightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center animate-fadeIn"
+      style={{ background: 'rgba(0,0,0,0.92)' }}
+      onClick={onClose}
+    >
+      <img
+        src={url}
+        alt=""
+        className="max-w-full max-h-full object-contain select-none"
+        style={{ maxHeight: '92dvh', maxWidth: '96vw' }}
+        onClick={(e) => e.stopPropagation()}
+      />
+      <button
+        className="absolute top-5 right-5 h-9 w-9 rounded-full flex items-center justify-center text-xl text-white"
+        style={{ background: 'rgba(255,255,255,0.15)' }}
+        onClick={onClose}
+      >×</button>
+    </div>
+  )
+}
+
 function SubmissionCard({
   sub,
   member,
+  onPhotoTap,
 }: {
   sub: SubmissionDoc
   member: UserDoc | undefined
+  onPhotoTap: (url: string) => void
 }) {
   const ts = sub.updatedAt ?? sub.submittedAt
   const timeLabel = ts
@@ -53,7 +78,7 @@ function SubmissionCard({
     : []
   const texts = sub.texts?.length ? sub.texts : sub.text ? [sub.text] : []
   const audios = sub.audioURLs ?? []
-  const hasContent = photos.length > 0 || texts.length > 0 || audios.length > 0
+  const hasContent = photos.length > 0 || texts.length > 0 || audios.length > 0 || !!sub.sketchURL || !!sub.location || !!sub.songURL
 
   return (
     <div
@@ -90,6 +115,8 @@ function SubmissionCard({
           key={i}
           src={url}
           alt="submission"
+          onClick={() => onPhotoTap(url)}
+          className="cursor-pointer active:opacity-90 transition-opacity"
           style={{
             width: '100%',
             height: 260,
@@ -184,12 +211,14 @@ function DaySection({
   memberUids,
   memberDocs,
   currentUid,
+  onPhotoTap,
 }: {
   entry: EntryDoc
   pairId: string
   memberUids: string[]
   memberDocs: Record<string, UserDoc>
   currentUid: string
+  onPhotoTap: (url: string) => void
 }) {
   const [submissions, setSubmissions] = useState<SubmissionDoc[]>([])
   const [subError, setSubError] = useState<string | null>(null)
@@ -276,7 +305,7 @@ function DaySection({
       ) : (
         <div className="space-y-3">
           {submissions.map((sub) => (
-            <SubmissionCard key={sub.uid} sub={sub} member={memberDocs[sub.uid]} />
+            <SubmissionCard key={sub.uid} sub={sub} member={memberDocs[sub.uid]} onPhotoTap={onPhotoTap} />
           ))}
 
           {/* Deletion consent UI — revealed entries only */}
@@ -419,6 +448,7 @@ function CalendarView({
   memberDocs,
   memberUids,
   currentUid,
+  onPhotoTap,
 }: {
   entries: EntryDoc[]
   onSelectDate: (date: string) => void
@@ -429,6 +459,7 @@ function CalendarView({
   memberDocs: Record<string, UserDoc>
   memberUids: string[]
   currentUid: string
+  onPhotoTap: (url: string) => void
 }) {
   const entryDates = new Set(entries.map((e) => e.date))
 
@@ -553,7 +584,7 @@ function CalendarView({
             <div className="flex-1 h-px" style={{ background: '#C9BFA8' }} />
           </div>
           {selectedEntry && (
-            <DaySection entry={selectedEntry} pairId={pairId} memberUids={memberUids} memberDocs={memberDocs} currentUid={currentUid} />
+            <DaySection entry={selectedEntry} pairId={pairId} memberUids={memberUids} memberDocs={memberDocs} currentUid={currentUid} onPhotoTap={onPhotoTap} />
           )}
         </div>
       )}
@@ -577,6 +608,7 @@ export default function TimelinePage() {
   const [filterMonth, setFilterMonth] = useState<string | null>(null)
   const [latestSummary, setLatestSummary] = useState<SummaryDoc | null>(null)
   const [summaryDismissed, setSummaryDismissed] = useState(false)
+  const [lightbox, setLightbox] = useState<string | null>(null)
 
   // Available months derived from entries (e.g. "2026-08")
   const availableMonths = Array.from(
@@ -808,6 +840,7 @@ export default function TimelinePage() {
             memberDocs={memberDocs}
             memberUids={Object.keys(memberDocs)}
             currentUid={user?.uid ?? ''}
+            onPhotoTap={setLightbox}
           />
         ) : (
           /* Journal view */
@@ -874,6 +907,7 @@ export default function TimelinePage() {
                 memberUids={Object.keys(memberDocs)}
                 memberDocs={memberDocs}
                 currentUid={user?.uid ?? ''}
+                onPhotoTap={setLightbox}
               />
             ))}
           </div>
@@ -934,6 +968,8 @@ export default function TimelinePage() {
           <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Timeline</span>
         </button>
       </nav>
+
+      {lightbox && <PhotoLightbox url={lightbox} onClose={() => setLightbox(null)} />}
     </div>
   )
 }

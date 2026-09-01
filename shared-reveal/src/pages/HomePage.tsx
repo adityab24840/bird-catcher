@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -6,11 +6,34 @@ import { signOutUser } from '../services/auth'
 import { db } from '../firebase/config'
 import type { UserDoc } from '../types/index'
 import { useEntry } from '../hooks/useEntry'
-import { useStreak } from '../hooks/useStreak'
+import { useStreak, useRevealedStreak } from '../hooks/useStreak'
 import { uploadSubmissionPhoto, uploadSubmissionAudio, uploadSubmissionSketch, submitEntryFn, revealAnywayFn, toJpegPreviewUrl, sendPingFn, leavePairFn } from '../services/submissions'
 import { useNotifications } from '../hooks/useNotifications'
 import NotificationPrompt from '../components/NotificationPrompt'
 import type { PairDoc } from '../types/index'
+
+const PROMPTS = [
+  'What did you do today that made you think of them?',
+  'A moment today you wished they were there for.',
+  'Something small that made you smile.',
+  'A song stuck in your head right now.',
+  'Something you want to tell them but haven\'t yet.',
+  'What\'s been on your mind lately?',
+  'A place you passed today that reminded you of them.',
+  'The highlight of your day.',
+  'Something that made you laugh today.',
+  'A thought you\'ve been carrying around.',
+  'Something new you noticed or learned.',
+  'What\'s been making you feel proud lately?',
+  'A memory that surfaced today.',
+  'Something you\'re looking forward to.',
+  'What does today smell or feel like?',
+  'A small thing that surprised you.',
+  'Something you wish you could share with them right now.',
+  'What\'s a word that describes your day?',
+  'A tiny detail from today worth remembering.',
+  'What would you tell them if you saw them right now?',
+]
 
 const MOOD_OPTIONS: { key: string; emoji: string; label: string }[] = [
   { key: 'happy', emoji: '😊', label: 'happy' },
@@ -46,11 +69,43 @@ function Avatar({
   )
 }
 
+function AttachChip({ icon, label, active, dot, disabled, onClick }: {
+  icon: string; label: string; active: boolean; dot?: boolean
+  disabled?: boolean; onClick: () => void
+}) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled}
+      className="relative flex flex-col items-center gap-1 py-3 rounded-2xl text-[9px] font-bold tracking-[0.07em] uppercase transition-all active:scale-95 disabled:opacity-40"
+      style={{ background: active ? '#E8F0E9' : '#F8F5F0', border: `1.5px solid ${active ? '#8FAF8A' : '#E8E2D9'}`, color: active ? '#2D5A3D' : '#7A7268' }}
+    >
+      <span className="text-lg leading-none">{icon}</span>
+      <span>{label}</span>
+      {dot && <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full" style={{ background: '#2D5A3D' }} />}
+    </button>
+  )
+}
+
+function Spinner() {
+  return (
+    <svg className="animate-spin h-4 w-4 mx-auto" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" strokeOpacity="0.3"/>
+      <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+    </svg>
+  )
+}
+
 function ResubmitForm({
   fileInputRef,
   photoPreview,
   submissionText,
   selectedMood,
+  audioBlob,
+  locationData,
+  gettingLocation,
+  songInput,
+  songURL,
+  sketchBlob,
+  showSketch,
   submitting,
   uploadingPhoto,
   submitError,
@@ -58,6 +113,13 @@ function ResubmitForm({
   onClearPhoto,
   onTextChange,
   onMoodChange,
+  onAudioBlob,
+  onLocation,
+  onGettingLocation,
+  onSongInput,
+  onSongURL,
+  onSketchBlob,
+  onShowSketch,
   onCancel,
   onSubmit,
 }: {
@@ -65,6 +127,13 @@ function ResubmitForm({
   photoPreview: string | null
   submissionText: string
   selectedMood: string | null
+  audioBlob: Blob | null
+  locationData: { lat: number; lng: number } | null
+  gettingLocation: boolean
+  songInput: string
+  songURL: string | null
+  sketchBlob: Blob | null
+  showSketch: boolean
   submitting: boolean
   uploadingPhoto: boolean
   submitError: string | null
@@ -72,97 +141,143 @@ function ResubmitForm({
   onClearPhoto: () => void
   onTextChange: (val: string) => void
   onMoodChange: (mood: string | null) => void
+  onAudioBlob: (blob: Blob | null) => void
+  onLocation: (loc: { lat: number; lng: number } | null) => void
+  onGettingLocation: (v: boolean) => void
+  onSongInput: (v: string) => void
+  onSongURL: (v: string | null) => void
+  onSketchBlob: (b: Blob | null) => void
+  onShowSketch: (v: boolean) => void
   onCancel: () => void
   onSubmit: () => void
 }) {
+  const [showVoice, setShowVoice] = useState(false)
+  const [showSongInput, setShowSongInput] = useState(false)
+
   return (
     <div className="w-full space-y-3 mt-2 text-left">
       <input ref={fileInputRef} type="file" accept="image/*" onChange={onPhotoSelect} className="hidden" />
-      <button
-        type="button"
-        onClick={() => fileInputRef.current?.click()}
+
+      {/* Photo */}
+      <button type="button" onClick={() => fileInputRef.current?.click()}
         disabled={submitting || uploadingPhoto}
-        className="relative w-full h-36 rounded-xl overflow-hidden flex items-center justify-center disabled:opacity-50 transition-all"
-        style={{
-          border: '1.5px dashed #C9BFA8',
-          background: '#F2EDE4',
-        }}
+        className="relative w-full h-36 rounded-xl overflow-hidden flex items-center justify-center disabled:opacity-50 transition-all active:scale-[0.99]"
+        style={{ border: '1.5px dashed #C9BFA8', background: '#F2EDE4' }}
       >
         {photoPreview ? (
           <>
             <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onClearPhoto()
-              }}
-              className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 text-white flex items-center justify-center text-sm leading-none"
-            >
+            <button type="button" onClick={(e) => { e.stopPropagation(); onClearPhoto() }}
+              className="absolute top-2 right-2 h-7 w-7 rounded-full bg-black/50 text-white flex items-center justify-center text-sm leading-none">
               ×
             </button>
           </>
         ) : (
           <div className="text-center select-none">
             <div className="text-2xl mb-1">📷</div>
-            <p className="text-[11px] tracking-[0.1em] uppercase font-medium" style={{ color: '#7A7268' }}>
-              tap to add photo
-            </p>
+            <p className="text-[11px] tracking-[0.1em] uppercase font-medium" style={{ color: '#7A7268' }}>tap to add photo</p>
           </div>
         )}
       </button>
-      <textarea
-        value={submissionText}
-        onChange={(e) => onTextChange(e.target.value.slice(0, 500))}
-        placeholder="Add another thought..."
-        disabled={submitting || uploadingPhoto}
-        rows={2}
+
+      {/* Text */}
+      <textarea value={submissionText} onChange={(e) => onTextChange(e.target.value.slice(0, 500))}
+        placeholder="Add another thought..." disabled={submitting || uploadingPhoto} rows={2}
         className="w-full rounded-xl px-4 py-3 text-[15px] resize-none focus:outline-none disabled:opacity-50"
-        style={{
-          border: '1px solid #C9BFA8',
-          background: '#FFFFFF',
-          color: '#1A1A16',
-        }}
+        style={{ border: '1px solid #C9BFA8', background: '#FFFFFF', color: '#1A1A16' }}
       />
-      {/* Mood picker */}
+
+      {/* Mood */}
       <div className="flex gap-2">
         {MOOD_OPTIONS.map(({ key, emoji }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onMoodChange(selectedMood === key ? null : key)}
+          <button key={key} type="button" onClick={() => onMoodChange(selectedMood === key ? null : key)}
             disabled={submitting || uploadingPhoto}
-            className="flex-1 py-2 rounded-xl text-xl transition-all active:scale-95"
-            style={{
-              background: selectedMood === key ? '#E8F0E9' : '#F8F5F0',
-              border: `1.5px solid ${selectedMood === key ? '#2D5A3D' : '#E8E2D9'}`,
-            }}
-          >
-            {emoji}
-          </button>
+            className="flex-1 py-2.5 rounded-xl text-xl transition-all active:scale-90"
+            style={{ background: selectedMood === key ? '#E8F0E9' : '#F8F5F0', border: `1.5px solid ${selectedMood === key ? '#2D5A3D' : '#E8E2D9'}` }}
+          >{emoji}</button>
         ))}
       </div>
 
-      {submitError && (
-        <p className="text-xs" style={{ color: '#B85C38' }}>
-          {submitError}
-        </p>
+      {/* Attachment strip */}
+      <div className="grid grid-cols-4 gap-2">
+        <AttachChip icon="🎤" label="Voice" active={showVoice || !!audioBlob} dot={!!audioBlob && !showVoice}
+          disabled={submitting || uploadingPhoto} onClick={() => setShowVoice(v => !v)} />
+        <AttachChip icon="📍" label={gettingLocation ? '…' : locationData ? 'Pinned' : 'Place'}
+          active={!!locationData || gettingLocation} disabled={submitting || uploadingPhoto || gettingLocation}
+          onClick={async () => {
+            if (locationData) { onLocation(null); return }
+            onGettingLocation(true)
+            try {
+              const pos = await new Promise<GeolocationPosition>((res, rej) =>
+                navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
+              )
+              onLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+            } catch { /* denied */ }
+            onGettingLocation(false)
+          }} />
+        <AttachChip icon="🎵" label="Song" active={showSongInput || !!songURL} dot={!!songURL && !showSongInput}
+          disabled={submitting || uploadingPhoto} onClick={() => setShowSongInput(v => !v)} />
+        <AttachChip icon="✏️" label="Draw" active={showSketch || !!sketchBlob} dot={!!sketchBlob && !showSketch}
+          disabled={submitting || uploadingPhoto}
+          onClick={() => onShowSketch(!showSketch)} />
+      </div>
+
+      {/* Voice panel */}
+      <div style={{ maxHeight: showVoice ? '300px' : 0, overflow: 'hidden', transition: 'max-height 0.25s ease' }}>
+        <div className="pt-1"><VoiceRecorder onBlob={onAudioBlob} disabled={submitting || uploadingPhoto} /></div>
+      </div>
+
+      {/* Location pill */}
+      {locationData && (
+        <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 animate-fadeIn"
+          style={{ background: '#E8F0E9', border: '1.5px solid #8FAF8A' }}>
+          <span>📍</span>
+          <span className="flex-1 text-sm font-medium" style={{ color: '#2D5A3D' }}>{locationData.lat.toFixed(4)}, {locationData.lng.toFixed(4)}</span>
+          <button type="button" onClick={() => onLocation(null)} className="text-sm shrink-0 transition-all active:scale-90" style={{ color: '#7A7268' }}>×</button>
+        </div>
       )}
-      <div className="flex gap-2">
-        <button
-          onClick={onCancel}
-          className="flex-1 rounded-lg py-2.5 text-sm font-medium"
-          style={{ border: '1px solid #C9BFA8', color: '#7A7268' }}
-        >
+
+      {/* Song panel */}
+      <div style={{ maxHeight: showSongInput ? '120px' : 0, overflow: 'hidden', transition: 'max-height 0.25s ease' }}>
+        <div className="pt-1">
+          {songURL ? (
+            <div className="flex items-center gap-2 rounded-xl px-4 py-2.5" style={{ background: '#E8F0E9', border: '1.5px solid #8FAF8A' }}>
+              <span>🎵</span>
+              <span className="flex-1 text-sm font-medium truncate" style={{ color: '#2D5A3D' }}>{songURL.replace('https://open.spotify.com/', '')}</span>
+              <button type="button" onClick={() => { onSongURL(null); onSongInput('') }} className="text-sm shrink-0 transition-all active:scale-90" style={{ color: '#7A7268' }}>×</button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input type="url" value={songInput} onChange={(e) => onSongInput(e.target.value)}
+                placeholder="open.spotify.com/track/…" disabled={submitting}
+                className="flex-1 rounded-xl px-4 py-2.5 text-sm focus:outline-none disabled:opacity-50"
+                style={{ border: '1.5px solid #E8E2D9', background: '#F8F5F0', color: '#1A1A16' }} />
+              <button type="button" disabled={!songInput.trim() || submitting}
+                onClick={() => { const p = parseSpotifyURL(songInput.trim()); if (p) { onSongURL(p); onSongInput('') } }}
+                className="rounded-xl px-4 py-2.5 text-sm font-bold transition-all active:scale-95 disabled:opacity-40"
+                style={{ background: '#2D5A3D', color: '#fff' }}>Add</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Sketch panel */}
+      <div style={{ maxHeight: showSketch ? '600px' : 0, overflow: 'hidden', transition: 'max-height 0.35s ease' }}>
+        <div className="pt-1"><SketchPad onBlob={onSketchBlob} disabled={submitting || uploadingPhoto} /></div>
+      </div>
+
+      {submitError && <p className="text-xs" style={{ color: '#B85C38' }}>{submitError}</p>}
+
+      <div className="flex gap-3 pt-1">
+        <button onClick={onCancel}
+          className="flex-1 rounded-xl py-3 text-sm font-semibold transition-all active:scale-[0.97]"
+          style={{ background: '#F2EDE4', border: '1.5px solid #C9BFA8', color: '#7A7268' }}>
           Cancel
         </button>
-        <button
-          onClick={onSubmit}
-          disabled={submitting || uploadingPhoto}
-          className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-          style={{ background: '#2D5A3D' }}
-        >
-          {uploadingPhoto ? 'Uploading…' : submitting ? 'Sharing…' : 'Share'}
+        <button onClick={onSubmit} disabled={submitting || uploadingPhoto}
+          className="flex-1 rounded-xl py-3 text-sm font-semibold text-white transition-all active:scale-[0.97] disabled:opacity-50"
+          style={{ background: '#2D5A3D' }}>
+          {submitting || uploadingPhoto ? <Spinner /> : 'Share'}
         </button>
       </div>
     </div>
@@ -378,50 +493,35 @@ function VoiceRecorder({
   const ss = String(seconds % 60).padStart(2, '0')
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-[10px] tracking-[0.15em] uppercase" style={{ color: '#C9BFA8' }}>
-        Voice memo
-      </p>
+    <div>
       {previewUrl ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 animate-fadeIn"
+          style={{ background: '#F8F5F0', border: '1.5px solid #E8E2D9' }}>
           <audio src={previewUrl} controls className="flex-1 h-8" style={{ minWidth: 0 }} />
-          <button
-            type="button"
-            onClick={clearPreview}
-            className="h-8 w-8 rounded-full flex items-center justify-center text-sm"
-            style={{ background: '#F2EDE4', border: '1px solid #C9BFA8', color: '#7A7268' }}
-          >
+          <button type="button" onClick={clearPreview}
+            className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-90"
+            style={{ background: '#F2EDE4', border: '1px solid #C9BFA8', color: '#7A7268' }}>
             ×
           </button>
         </div>
       ) : recording ? (
-        <div className="flex items-center gap-3">
-          <span
-            className="h-2 w-2 rounded-full animate-pulse"
-            style={{ background: '#B85C38' }}
-          />
-          <span className="text-sm font-mono" style={{ color: '#B85C38' }}>
-            {mm}:{ss}
-          </span>
-          <button
-            type="button"
-            onClick={stopRecording}
-            className="ml-auto rounded-full px-4 py-1.5 text-xs font-semibold text-white"
-            style={{ background: '#B85C38' }}
-          >
+        <div className="flex items-center gap-3 rounded-xl px-4 py-3 animate-fadeIn"
+          style={{ background: '#FDF4F0', border: '1.5px solid #E8C4B0' }}>
+          <span className="record-dot-pulse h-2.5 w-2.5 rounded-full shrink-0"
+            style={{ background: '#B85C38' }} />
+          <span className="text-sm font-mono flex-1" style={{ color: '#B85C38' }}>{mm}:{ss}</span>
+          <button type="button" onClick={stopRecording}
+            className="rounded-full px-4 py-1.5 text-xs font-bold text-white shrink-0 transition-all active:scale-95"
+            style={{ background: '#B85C38' }}>
             Stop
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={startRecording}
-          disabled={disabled}
-          className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all active:scale-95 disabled:opacity-40"
-          style={{ background: '#F8F5F0', border: '1.5px solid #E8E2D9', color: '#7A7268' }}
-        >
-          <span>🎙️</span>
-          <span>Record voice memo</span>
+        <button type="button" onClick={startRecording} disabled={disabled}
+          className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all active:scale-95 disabled:opacity-40"
+          style={{ background: '#F8F5F0', border: '1.5px solid #E8E2D9', color: '#7A7268' }}>
+          <span className="text-base">🎙️</span>
+          <span>Tap to record</span>
         </button>
       )}
     </div>
@@ -462,6 +562,8 @@ export default function HomePage() {
   const [songURL, setSongURL] = useState<string | null>(null)
   const [sketchBlob, setSketchBlob] = useState<Blob | null>(null)
   const [showSketch, setShowSketch] = useState(false)
+  const [showVoice, setShowVoice] = useState(false)
+  const [showSongInput, setShowSongInput] = useState(false)
   const [reminderInput, setReminderInput] = useState('')
   const [savingReminder, setSavingReminder] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
@@ -541,6 +643,7 @@ export default function HomePage() {
     user?.uid ?? null,
     partnerId,
   )
+  const revealedStreak = useRevealedStreak(userDoc?.pairId ?? null)
 
   const daysTogether = pairDoc?.createdAt
     ? Math.max(1, Math.floor((Date.now() - pairDoc.createdAt.toMillis()) / 86400000) + 1)
@@ -559,6 +662,12 @@ export default function HomePage() {
         return `${weekday} · ${day} ${month}`
       })()
     : ''
+
+  const todayPrompt = useMemo(() => {
+    if (!entryDate) return null
+    const n = parseInt(entryDate.replace(/-/g, ''), 10)
+    return PROMPTS[n % PROMPTS.length]
+  }, [entryDate])
 
   async function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -614,6 +723,8 @@ export default function HomePage() {
       setSongInput('')
       setSketchBlob(null)
       setShowSketch(false)
+      setShowVoice(false)
+      setShowSongInput(false)
     } catch (err: unknown) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to submit')
       console.error('[HomePage] submit error:', err)
@@ -641,6 +752,15 @@ export default function HomePage() {
     setSelectedPhoto(null)
     setPhotoPreview(null)
     setSubmissionText('')
+    setSelectedMood(null)
+    setAudioBlob(null)
+    setLocationData(null)
+    setSongURL(null)
+    setSongInput('')
+    setSketchBlob(null)
+    setShowSketch(false)
+    setShowVoice(false)
+    setShowSongInput(false)
   }
 
   async function submitAndCloseResubmit() {
@@ -669,7 +789,7 @@ export default function HomePage() {
           )}
           {daysTogether !== null && (
             <p className="text-[10px] tracking-[0.12em] mt-0.5 uppercase" style={{ color: '#C9BFA8' }}>
-              Day {daysTogether} · building this
+              Day {daysTogether}{revealedStreak >= 2 ? ` · 🔥 ${revealedStreak}` : ' · building this'}
             </p>
           )}
         </div>
@@ -767,6 +887,13 @@ export default function HomePage() {
                 photoPreview={photoPreview}
                 submissionText={submissionText}
                 selectedMood={selectedMood}
+                audioBlob={audioBlob}
+                locationData={locationData}
+                gettingLocation={gettingLocation}
+                songInput={songInput}
+                songURL={songURL}
+                sketchBlob={sketchBlob}
+                showSketch={showSketch}
                 submitting={submitting}
                 uploadingPhoto={uploadingPhoto}
                 submitError={submitError}
@@ -774,6 +901,13 @@ export default function HomePage() {
                 onClearPhoto={clearPhoto}
                 onTextChange={setSubmissionText}
                 onMoodChange={setSelectedMood}
+                onAudioBlob={setAudioBlob}
+                onLocation={setLocationData}
+                onGettingLocation={setGettingLocation}
+                onSongInput={setSongInput}
+                onSongURL={setSongURL}
+                onSketchBlob={setSketchBlob}
+                onShowSketch={setShowSketch}
                 onCancel={cancelResubmit}
                 onSubmit={submitAndCloseResubmit}
               />
@@ -921,6 +1055,13 @@ export default function HomePage() {
                   photoPreview={photoPreview}
                   submissionText={submissionText}
                   selectedMood={selectedMood}
+                  audioBlob={audioBlob}
+                  locationData={locationData}
+                  gettingLocation={gettingLocation}
+                  songInput={songInput}
+                  songURL={songURL}
+                  sketchBlob={sketchBlob}
+                  showSketch={showSketch}
                   submitting={submitting}
                   uploadingPhoto={uploadingPhoto}
                   submitError={submitError}
@@ -928,6 +1069,13 @@ export default function HomePage() {
                   onClearPhoto={clearPhoto}
                   onTextChange={setSubmissionText}
                   onMoodChange={setSelectedMood}
+                  onAudioBlob={setAudioBlob}
+                  onLocation={setLocationData}
+                  onGettingLocation={setGettingLocation}
+                  onSongInput={setSongInput}
+                  onSongURL={setSongURL}
+                  onSketchBlob={setSketchBlob}
+                  onShowSketch={setShowSketch}
                   onCancel={cancelResubmit}
                   onSubmit={submitAndCloseResubmit}
                 />
@@ -1006,11 +1154,15 @@ export default function HomePage() {
                   color: '#1A1A16',
                 }}
               />
-              {submissionText.length > 0 && (
+              {submissionText.length > 0 ? (
                 <p className="text-[10px] text-right mt-1" style={{ color: '#C9BFA8' }}>
                   {submissionText.length}/500
                 </p>
-              )}
+              ) : todayPrompt ? (
+                <p className="text-[11px] italic mt-1.5 leading-relaxed animate-fadeIn" style={{ color: '#C9BFA8' }}>
+                  💭 {todayPrompt}
+                </p>
+              ) : null}
             </div>
 
             {/* Mood picker */}
@@ -1038,132 +1190,78 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Voice recorder */}
-            <VoiceRecorder
-              onBlob={setAudioBlob}
-              disabled={submitting || uploadingPhoto}
-            />
-
-            {/* Location pin */}
-            <div>
-              <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: '#C9BFA8' }}>
-                Location
-              </p>
-              {locationData ? (
-                <div
-                  className="flex items-center gap-2 rounded-xl px-4 py-2.5"
-                  style={{ background: '#E8F0E9', border: '1.5px solid #8FAF8A' }}
-                >
-                  <span>📍</span>
-                  <span className="flex-1 text-sm font-medium" style={{ color: '#2D5A3D' }}>
-                    {locationData.lat.toFixed(4)}, {locationData.lng.toFixed(4)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setLocationData(null)}
-                    className="text-sm"
-                    style={{ color: '#7A7268' }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled={submitting || uploadingPhoto || gettingLocation}
-                  onClick={async () => {
-                    setGettingLocation(true)
-                    try {
-                      const pos = await new Promise<GeolocationPosition>((res, rej) =>
-                        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
-                      )
-                      setLocationData({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-                    } catch {
-                      setSubmitError('Could not get location. Check browser permissions.')
-                    }
-                    setGettingLocation(false)
-                  }}
-                  className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all active:scale-95 disabled:opacity-40"
-                  style={{ background: '#F8F5F0', border: '1.5px solid #E8E2D9', color: '#7A7268' }}
-                >
-                  <span>📍</span>
-                  <span>{gettingLocation ? 'Getting location…' : 'Pin your location'}</span>
-                </button>
-              )}
+            {/* Attachment strip */}
+            <div className="grid grid-cols-4 gap-2">
+              <AttachChip icon="🎤" label="Voice" active={showVoice || !!audioBlob} dot={!!audioBlob && !showVoice}
+                disabled={submitting || uploadingPhoto} onClick={() => setShowVoice(v => !v)} />
+              <AttachChip icon="📍" label={gettingLocation ? '…' : locationData ? 'Pinned' : 'Place'}
+                active={!!locationData || gettingLocation} disabled={submitting || uploadingPhoto || gettingLocation}
+                onClick={async () => {
+                  if (locationData) { setLocationData(null); return }
+                  setGettingLocation(true)
+                  try {
+                    const pos = await new Promise<GeolocationPosition>((res, rej) =>
+                      navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
+                    )
+                    setLocationData({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+                  } catch {
+                    setSubmitError('Could not get location. Check browser permissions.')
+                  }
+                  setGettingLocation(false)
+                }} />
+              <AttachChip icon="🎵" label="Song" active={showSongInput || !!songURL} dot={!!songURL && !showSongInput}
+                disabled={submitting || uploadingPhoto} onClick={() => setShowSongInput(v => !v)} />
+              <AttachChip icon="✏️" label="Draw" active={showSketch || !!sketchBlob} dot={!!sketchBlob && !showSketch}
+                disabled={submitting || uploadingPhoto}
+                onClick={() => setShowSketch(v => !v)} />
             </div>
 
-            {/* Song link */}
-            <div>
-              <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: '#C9BFA8' }}>
-                Song (Spotify)
-              </p>
-              {songURL ? (
-                <div className="flex items-center gap-2 rounded-xl px-4 py-2.5"
-                  style={{ background: '#E8F0E9', border: '1.5px solid #8FAF8A' }}>
-                  <span>🎵</span>
-                  <span className="flex-1 text-sm font-medium truncate" style={{ color: '#2D5A3D' }}>
-                    {songURL.replace('https://open.spotify.com/', '')}
-                  </span>
-                  <button type="button" onClick={() => { setSongURL(null); setSongInput('') }}
-                    className="text-sm shrink-0" style={{ color: '#7A7268' }}>×</button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={songInput}
-                    onChange={(e) => setSongInput(e.target.value)}
-                    placeholder="https://open.spotify.com/track/…"
-                    disabled={submitting}
-                    className="flex-1 rounded-xl px-4 py-2.5 text-sm focus:outline-none disabled:opacity-50"
-                    style={{ border: '1.5px solid #E8E2D9', background: '#F8F5F0', color: '#1A1A16' }}
-                  />
-                  <button
-                    type="button"
-                    disabled={!songInput.trim() || submitting}
-                    onClick={() => {
-                      const parsed = parseSpotifyURL(songInput.trim())
-                      if (parsed) { setSongURL(parsed); setSongInput('') }
-                      else setSubmitError('Paste a valid Spotify track, album, or playlist link.')
-                    }}
-                    className="rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-40"
-                    style={{ background: '#2D5A3D', color: '#fff' }}
-                  >
-                    Add
-                  </button>
-                </div>
-              )}
+            {/* Voice panel */}
+            <div style={{ maxHeight: showVoice ? '300px' : 0, overflow: 'hidden', transition: 'max-height 0.25s ease' }}>
+              <div className="pt-1"><VoiceRecorder onBlob={setAudioBlob} disabled={submitting || uploadingPhoto} /></div>
             </div>
 
-            {/* Sketch pad */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] tracking-[0.15em] uppercase" style={{ color: '#C9BFA8' }}>
-                  Drawing
-                </p>
-                <button
-                  type="button"
-                  onClick={() => { setShowSketch((v) => !v); setSketchBlob(null) }}
-                  disabled={submitting}
-                  className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
-                  style={{
-                    background: showSketch ? '#E8F0E9' : '#F8F5F0',
-                    border: `1px solid ${showSketch ? '#8FAF8A' : '#E8E2D9'}`,
-                    color: showSketch ? '#2D5A3D' : '#7A7268',
-                  }}
-                >
-                  {showSketch ? '✕ Hide' : '✏️ Draw'}
-                </button>
+            {/* Location pill */}
+            {locationData && (
+              <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 animate-fadeIn"
+                style={{ background: '#E8F0E9', border: '1.5px solid #8FAF8A' }}>
+                <span>📍</span>
+                <span className="flex-1 text-sm font-medium" style={{ color: '#2D5A3D' }}>{locationData.lat.toFixed(4)}, {locationData.lng.toFixed(4)}</span>
+                <button type="button" onClick={() => setLocationData(null)} className="text-sm shrink-0 transition-all active:scale-90" style={{ color: '#7A7268' }}>×</button>
               </div>
-              {showSketch && (
-                <SketchPad
-                  onBlob={setSketchBlob}
-                  disabled={submitting || uploadingPhoto}
-                />
-              )}
-              {sketchBlob && !showSketch && (
-                <p className="text-[11px]" style={{ color: '#2D5A3D' }}>✓ Drawing attached</p>
-              )}
+            )}
+
+            {/* Song panel */}
+            <div style={{ maxHeight: showSongInput ? '120px' : 0, overflow: 'hidden', transition: 'max-height 0.25s ease' }}>
+              <div className="pt-1">
+                {songURL ? (
+                  <div className="flex items-center gap-2 rounded-xl px-4 py-2.5" style={{ background: '#E8F0E9', border: '1.5px solid #8FAF8A' }}>
+                    <span>🎵</span>
+                    <span className="flex-1 text-sm font-medium truncate" style={{ color: '#2D5A3D' }}>{songURL.replace('https://open.spotify.com/', '')}</span>
+                    <button type="button" onClick={() => { setSongURL(null); setSongInput('') }} className="text-sm shrink-0 transition-all active:scale-90" style={{ color: '#7A7268' }}>×</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input type="url" value={songInput} onChange={(e) => setSongInput(e.target.value)}
+                      placeholder="open.spotify.com/track/…" disabled={submitting}
+                      className="flex-1 rounded-xl px-4 py-2.5 text-sm focus:outline-none disabled:opacity-50"
+                      style={{ border: '1.5px solid #E8E2D9', background: '#F8F5F0', color: '#1A1A16' }} />
+                    <button type="button" disabled={!songInput.trim() || submitting}
+                      onClick={() => {
+                        const parsed = parseSpotifyURL(songInput.trim())
+                        if (parsed) { setSongURL(parsed); setSongInput('') }
+                        else setSubmitError('Paste a valid Spotify track, album, or playlist link.')
+                      }}
+                      className="rounded-xl px-4 py-2.5 text-sm font-bold transition-all active:scale-95 disabled:opacity-40"
+                      style={{ background: '#2D5A3D', color: '#fff' }}>Add</button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Sketch panel */}
+            <div style={{ maxHeight: showSketch ? '600px' : 0, overflow: 'hidden', transition: 'max-height 0.35s ease' }}>
+              <div className="pt-1"><SketchPad onBlob={setSketchBlob} disabled={submitting || uploadingPhoto} /></div>
             </div>
 
             {submitError && (
@@ -1175,15 +1273,9 @@ export default function HomePage() {
             <button
               onClick={handleSubmit}
               disabled={submitting || uploadingPhoto}
-              className={`w-full rounded-lg py-4 text-sm font-semibold text-white tracking-widest uppercase disabled:opacity-50 transition-all active:scale-[0.98] overflow-hidden relative btn-shimmer ${uploadingPhoto ? 'active' : ''}`}
+              className={`w-full rounded-xl py-4 text-sm font-bold text-white tracking-widest uppercase disabled:opacity-50 transition-all active:scale-[0.98] btn-shimmer ${(submitting || uploadingPhoto) ? 'active' : ''}`}
             >
-              {uploadingPhoto ? 'Uploading photo…' : submitting ? 'Sharing…' : 'Share'}
-              {uploadingPhoto && (
-                <span
-                  className="absolute bottom-0 left-0 h-0.5 animate-pulse"
-                  style={{ background: '#8FAF8A', width: '60%' }}
-                />
-              )}
+              {submitting || uploadingPhoto ? <Spinner /> : 'Share'}
             </button>
 
             {/* Partner already submitted — motivational preview */}
