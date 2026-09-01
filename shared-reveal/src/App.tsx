@@ -20,10 +20,12 @@ import HomePage from './pages/HomePage'
 import PairSetupPage from './pages/PairSetupPage'
 import TimelinePage from './pages/TimelinePage'
 import ExportPage from './pages/ExportPage'
+import StatsPage from './pages/StatsPage'
 import OfflineBanner from './components/OfflineBanner'
 import IOSInstallBanner from './components/IOSInstallBanner'
 import UpdateBanner from './components/UpdateBanner'
 import ForegroundMessageToast from './components/ForegroundMessageToast'
+import OnboardingOverlay from './components/OnboardingOverlay'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -46,6 +48,7 @@ export default function App() {
       <UpdateBanner />
       <OfflineBanner />
       <IOSInstallBanner />
+      <OnboardingOverlay visible={!!user && !!pairId} />
       <Routes>
         {/* / — signed out → Landing; signed in + no pair → /pair-setup; signed in + paired → /home */}
         <Route
@@ -83,6 +86,12 @@ export default function App() {
         <Route
           path="/export"
           element={user ? <ExportPage /> : <Navigate to="/" replace />}
+        />
+
+        {/* /stats — relationship stats dashboard */}
+        <Route
+          path="/stats"
+          element={user ? <StatsPage /> : <Navigate to="/" replace />}
         />
       </Routes>
     </>

@@ -84,4 +84,5 @@ export interface SubmissionDoc {
   submittedAt: Timestamp
   updatedAt?: Timestamp
   mood?: string | null  // 'happy' | 'missing-you' | 'proud' | 'random'
+  tags?: string[]       // 'trip' | 'hard-day' | 'milestone' | 'just-because' | 'birthday'
 }

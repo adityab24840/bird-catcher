@@ -91,6 +91,7 @@ const SubmitEntrySchema = z
     location: z.object({ lat: z.number(), lng: z.number() }).nullable().optional(),
     songURL: z.string().url().regex(/^https:\/\/open\.spotify\.com\/(track|album|playlist|episode)\/[A-Za-z0-9]+/).nullable().optional(),
     sketchURL: z.url().nullable().optional(),
+    tags: z.array(z.string().max(20)).max(5).optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.photoURL && !data.text?.trim() && !data.audioURL && !data.location && !data.songURL && !data.sketchURL) {
@@ -248,7 +249,7 @@ export const submitEntry = onCall(callableOptions, async (request) => {
     throw new HttpsError('invalid-argument', 'Invalid submission data')
   }
 
-  const { entryDate, text, photoURL, audioURL = null, mood = null, location = null, songURL = null, sketchURL = null } = parsed.data
+  const { entryDate, text, photoURL, audioURL = null, mood = null, location = null, songURL = null, sketchURL = null, tags = [] } = parsed.data
   const uid = request.auth.uid
   const db = getFirestore()
   const userRef = db.doc(`users/${uid}`)
@@ -293,6 +294,7 @@ export const submitEntry = onCall(callableOptions, async (request) => {
         location: location ?? null,
         songURL: songURL ?? null,
         sketchURL: sketchURL ?? null,
+        tags: tags ?? [],
         submittedAt: FieldValue.serverTimestamp(),
       })
     } else {
@@ -309,6 +311,7 @@ export const submitEntry = onCall(callableOptions, async (request) => {
         location: location ?? existing.location ?? null,
         songURL: songURL ?? existing.songURL ?? null,
         sketchURL: sketchURL ?? existing.sketchURL ?? null,
+        tags: tags?.length ? tags : (existing.tags ?? []),
         photoURL: null,
         text: null,
         submittedAt: existing.submittedAt ?? FieldValue.serverTimestamp(),
@@ -549,9 +552,12 @@ export const sendPing = onCall(callableOptions, async (request) => {
 
 const MILESTONES: Record<number, string> = {
   1:   '🌿 First reveal! You started something.',
-  10:  '✨ 10 reveals — still showing up.',
-  50:  '🌱 50 reveals. This is becoming something real.',
+  7:   '✨ 7 reveals — a whole week of this.',
+  10:  '🌱 10 reveals — still showing up.',
+  30:  '🌸 30 reveals. A whole month.',
+  50:  '🍃 50 reveals. This is becoming something real.',
   100: '🎉 100 reveals together. You built this.',
+  200: "💚 200 reveals. Look how far you've come.",
   365: '🌳 365 reveals. A full year of this.',
 }
 
@@ -901,6 +907,60 @@ export const dailyReminder = onSchedule('0 * * * *', async () => {
         token,
         '🌿 Bird Eye',
         "You haven't shared today yet — what reminded you of them?"
+      )
+    })
+  )
+})
+
+// ── Yearly summary (fires Jan 1 at 10:00 UTC) ────────────────────────────────
+
+export const yearlySummary = onSchedule('0 10 1 1 *', async () => {
+  const db = getFirestore()
+  const now = new Date()
+  const year = now.getFullYear() - 1
+  const startDate = `${year}-01-01`
+  const endDate = `${year}-12-31`
+  const periodKey = `yearly-${year}`
+  const label = String(year)
+
+  const pairsSnap = await db.collection('pairs').where('dissolvedAt', '==', null).get()
+
+  await Promise.allSettled(
+    pairsSnap.docs.map(async (pairDoc) => {
+      const pairId = pairDoc.id
+      const members: string[] = pairDoc.data().members ?? []
+      if (members.length < 2) return
+
+      const existing = await db
+        .collection(`pairs/${pairId}/summaries`)
+        .where('period', '==', periodKey)
+        .limit(1)
+        .get()
+      if (!existing.empty) return
+
+      const revealedSnap = await db
+        .collection(`pairs/${pairId}/entries`)
+        .where('status', '==', 'revealed')
+        .where('date', '>=', startDate)
+        .where('date', '<=', endDate)
+        .get()
+      const revealCount = revealedSnap.size
+      if (revealCount === 0) return
+
+      await db.collection(`pairs/${pairId}/summaries`).add({
+        type: 'yearly',
+        period: periodKey,
+        label,
+        revealCount,
+        createdAt: FieldValue.serverTimestamp(),
+      })
+
+      const body = `You shared ${revealCount} moment${revealCount === 1 ? '' : 's'} together in ${year}. 🌿`
+      await Promise.allSettled(
+        members.map(async (uid) => {
+          const token = await getToken(db, uid)
+          if (token) await sendPush(token, `🌳 ${year} in review`, body)
+        })
       )
     })
   )

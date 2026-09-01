@@ -1,5 +1,42 @@
 @import "tailwindcss";
 
+/* ── Design tokens ──────────────────────────────────────────────────────────── */
+:root {
+  --c-bg:          #F2EDE4;
+  --c-bg-card:     #FFFFFF;
+  --c-bg-surface:  #F8F5F0;
+  --c-bg-muted:    #F2EDE4;
+  --c-text-1:      #1A1A16;
+  --c-text-2:      #7A7268;
+  --c-text-3:      #C9BFA8;
+  --c-border:      #E8E2D9;
+  --c-border-mid:  #C9BFA8;
+  --c-green:       #2D5A3D;
+  --c-green-light: #E8F0E9;
+  --c-green-mid:   #8FAF8A;
+  --c-accent:      #B85C38;
+  --c-accent-light:#FAF0EB;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-bg:          #18181A;
+    --c-bg-card:     #222224;
+    --c-bg-surface:  #1E1E20;
+    --c-bg-muted:    #1A1A1C;
+    --c-text-1:      #E8E2D9;
+    --c-text-2:      #8A8278;
+    --c-text-3:      #48443E;
+    --c-border:      #2A2A2C;
+    --c-border-mid:  #3A3A3C;
+    --c-green:       #4A8A60;
+    --c-green-light: #1A2820;
+    --c-green-mid:   #4A6A4A;
+    --c-accent:      #C06840;
+    --c-accent-light:#2A1E18;
+  }
+}
+
 /*
  * Tailwind v4 CSS-first configuration.
  * Design tokens are defined here via @theme.
@@ -97,7 +134,7 @@
 }
 
 body {
-  background-color: #F2EDE4;
+  background-color: var(--c-bg);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg opacity='0.07' fill='%232D5A3D'%3E%3Cpath fill='none' stroke='%232D5A3D' stroke-width='1.6' stroke-linecap='round' d='M108 215 Q102 175 93 135 Q87 110 89 85'/%3E%3Cellipse cx='98' cy='200' rx='16' ry='5.5' transform='rotate(-42 98 200)'/%3E%3Cellipse cx='94' cy='183' rx='15' ry='5' transform='rotate(-38 94 183)'/%3E%3Cellipse cx='91' cy='167' rx='14' ry='4.5' transform='rotate(-34 91 167)'/%3E%3Cellipse cx='89' cy='152' rx='12' ry='4' transform='rotate(-29 89 152)'/%3E%3Cellipse cx='88' cy='138' rx='11' ry='3.5' transform='rotate(-24 88 138)'/%3E%3Cellipse cx='88' cy='125' rx='9' ry='3' transform='rotate(-18 88 125)'/%3E%3Cellipse cx='89' cy='113' rx='7' ry='2.5' transform='rotate(-11 89 113)'/%3E%3Cellipse cx='89' cy='102' rx='5' ry='2' transform='rotate(-5 89 102)'/%3E%3Cellipse cx='118' cy='205' rx='16' ry='5.5' transform='rotate(38 118 205)'/%3E%3Cellipse cx='114' cy='188' rx='15' ry='5' transform='rotate(34 114 188)'/%3E%3Cellipse cx='111' cy='172' rx='14' ry='4.5' transform='rotate(30 111 172)'/%3E%3Cellipse cx='109' cy='157' rx='12' ry='4' transform='rotate(25 109 157)'/%3E%3Cellipse cx='108' cy='143' rx='11' ry='3.5' transform='rotate(20 108 143)'/%3E%3Cellipse cx='107' cy='130' rx='9' ry='3' transform='rotate(14 107 130)'/%3E%3Cellipse cx='108' cy='118' rx='7' ry='2.5' transform='rotate(8 108 118)'/%3E%3Cellipse cx='92' cy='90' rx='5' ry='2' transform='rotate(2 92 90)'/%3E%3Cpath fill='none' stroke='%232D5A3D' stroke-width='1.3' d='M89 85 Q84 68 91 56 Q97 45 95 32'/%3E%3Ccircle cx='95' cy='30' r='4.5'/%3E%3Cpath fill='none' stroke='%232D5A3D' stroke-width='1.1' stroke-linecap='round' d='M22 215 Q32 190 44 168'/%3E%3Cellipse cx='26' cy='203' rx='10' ry='3.5' transform='rotate(-50 26 203)'/%3E%3Cellipse cx='31' cy='190' rx='9' ry='3' transform='rotate(-45 31 190)'/%3E%3Cellipse cx='37' cy='179' rx='8' ry='2.5' transform='rotate(-39 37 179)'/%3E%3Cellipse cx='39' cy='191' rx='9' ry='3' transform='rotate(33 39 191)'/%3E%3Cellipse cx='44' cy='180' rx='8' ry='2.5' transform='rotate(30 44 180)'/%3E%3Cpath fill='none' stroke='%232D5A3D' stroke-width='1' d='M44 168 Q47 158 44 150'/%3E%3Ccircle cx='44' cy='149' r='2.5'/%3E%3Cpath fill='none' stroke='%232D5A3D' stroke-width='1.1' stroke-linecap='round' d='M198 215 Q188 190 176 168'/%3E%3Cellipse cx='194' cy='203' rx='10' ry='3.5' transform='rotate(50 194 203)'/%3E%3Cellipse cx='189' cy='190' rx='9' ry='3' transform='rotate(45 189 190)'/%3E%3Cellipse cx='183' cy='179' rx='8' ry='2.5' transform='rotate(39 183 179)'/%3E%3Cellipse cx='181' cy='191' rx='9' ry='3' transform='rotate(-33 181 191)'/%3E%3Cellipse cx='176' cy='180' rx='8' ry='2.5' transform='rotate(-30 176 180)'/%3E%3Cpath fill='none' stroke='%232D5A3D' stroke-width='1' d='M176 168 Q173 158 176 150'/%3E%3Ccircle cx='176' cy='149' r='2.5'/%3E%3Ccircle cx='16' cy='110' r='2' opacity='0.5'/%3E%3Ccircle cx='22' cy='104' r='1.5' opacity='0.4'/%3E%3Ccircle cx='13' cy='104' r='1.2' opacity='0.35'/%3E%3Ccircle cx='18' cy='97' r='1.8' opacity='0.45'/%3E%3Ccircle cx='25' cy='97' r='1' opacity='0.3'/%3E%3Ccircle cx='204' cy='110' r='2' opacity='0.5'/%3E%3Ccircle cx='198' cy='104' r='1.5' opacity='0.4'/%3E%3Ccircle cx='207' cy='104' r='1.2' opacity='0.35'/%3E%3Ccircle cx='202' cy='97' r='1.8' opacity='0.45'/%3E%3Ccircle cx='195' cy='97' r='1' opacity='0.3'/%3E%3Ccircle cx='110' cy='8' r='1.8' opacity='0.4'/%3E%3Ccircle cx='118' cy='4' r='1.2' opacity='0.3'/%3E%3Ccircle cx='102' cy='4' r='1.2' opacity='0.3'/%3E%3Cellipse cx='60' cy='18' rx='8' ry='3' transform='rotate(-15 60 18)' opacity='0.6'/%3E%3Cpath fill='none' stroke='%232D5A3D' stroke-width='1' d='M60 18 L57 8' opacity='0.6'/%3E%3Cellipse cx='160' cy='18' rx='8' ry='3' transform='rotate(15 160 18)' opacity='0.6'/%3E%3Cpath fill='none' stroke='%232D5A3D' stroke-width='1' d='M160 18 L163 8' opacity='0.6'/%3E%3C/g%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 220px 220px;

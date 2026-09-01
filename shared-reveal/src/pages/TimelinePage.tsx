@@ -256,7 +256,13 @@ function SubmissionCard({
 
       {/* Sketch */}
       {sub.sketchURL && (
-        <img src={sub.sketchURL} alt="sketch" className="w-full block border-t" style={{ borderColor: '#F0EBE0' }} />
+        <img
+          src={sub.sketchURL}
+          alt="sketch"
+          onClick={() => onPhotoTap(sub.sketchURL!)}
+          className="w-full block border-t cursor-pointer active:opacity-80 transition-opacity"
+          style={{ borderColor: '#F0EBE0' }}
+        />
       )}
 
       {/* Body text */}
@@ -264,6 +270,21 @@ function SubmissionCard({
         <div className="px-4 pt-4 pb-1">
           {texts.map((t, i) => (
             <p key={i} className="text-[15px] leading-relaxed mb-2 last:mb-0" style={{ color: '#1A1A16' }}>{t}</p>
+          ))}
+        </div>
+      )}
+
+      {/* Tags */}
+      {sub.tags && sub.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 px-4 pt-3">
+          {sub.tags.map((tag) => (
+            <span
+              key={tag}
+              className="text-[10px] font-semibold px-2.5 py-1 rounded-full"
+              style={{ background: '#E8F0E9', color: '#2D5A3D' }}
+            >
+              {tag}
+            </span>
           ))}
         </div>
       )}
@@ -834,6 +855,8 @@ export default function TimelinePage() {
   const [latestSummary, setLatestSummary] = useState<SummaryDoc | null>(null)
   const [summaryDismissed, setSummaryDismissed] = useState(false)
   const [lightbox, setLightbox] = useState<string | null>(null)
+  const [searchQ, setSearchQ] = useState('')
+  const [showSearch, setShowSearch] = useState(false)
 
   // Per-submission favorites — stored as "date/uid" strings in user doc
   const myFavs: string[] = (user?.uid ? memberDocs[user.uid]?.favoriteSubmissions : undefined) ?? []
@@ -854,9 +877,24 @@ export default function TimelinePage() {
     new Set(entries.map((e) => e.date.slice(0, 7)))
   ).sort((a, b) => b.localeCompare(a))
 
+  // Flashback: random revealed entry different from today
+  const flashbackEntry = useMemo(() => {
+    const revealed = entries.filter((e) => e.status === 'revealed' && e.date !== new Date().toLocaleDateString('en-CA'))
+    if (revealed.length === 0) return null
+    // deterministic "random" per day
+    const n = parseInt(new Date().toLocaleDateString('en-CA').replace(/-/g, ''), 10)
+    return revealed[n % revealed.length]
+  }, [entries])
+
   const filteredEntries = entries.filter((e) => {
     if (filterFavs && !myFavs.some((k) => k.startsWith(e.date + '/'))) return false
     if (filterMonth && !e.date.startsWith(filterMonth)) return false
+    if (searchQ.trim()) {
+      const q = searchQ.toLowerCase()
+      // Match against date string (YYYY-MM-DD) and human-readable month/day
+      const human = new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toLowerCase()
+      if (!e.date.includes(q) && !human.includes(q)) return false
+    }
     return true
   })
 
@@ -934,6 +972,32 @@ export default function TimelinePage() {
         </div>
 
         <div className="flex items-center gap-2">
+        {/* Search toggle */}
+        <button
+          onClick={() => { setShowSearch((v) => !v); setSearchQ('') }}
+          className="flex items-center justify-center rounded-lg px-2.5 py-1.5 border transition-all"
+          style={{ background: showSearch ? '#2D5A3D' : 'transparent', borderColor: showSearch ? '#2D5A3D' : '#C9BFA8' }}
+          title="Search"
+        >
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="7" stroke={showSearch ? '#fff' : '#1A1A16'} strokeWidth="1.8" />
+            <path d="M20 20l-3.5-3.5" stroke={showSearch ? '#fff' : '#1A1A16'} strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </button>
+
+        {/* Stats button */}
+        <button
+          onClick={() => navigate('/stats')}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 border transition-all"
+          style={{ background: 'transparent', borderColor: '#C9BFA8' }}
+          title="Relationship stats"
+        >
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24">
+            <path d="M4 20V14M8 20V10M12 20V6M16 20V12M20 20V8" stroke="#1A1A16" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          <span className="text-[10px] tracking-[0.15em] uppercase font-semibold" style={{ color: '#1A1A16' }}>Stats</span>
+        </button>
+
         {/* Export button */}
         <button
           onClick={() => navigate('/export')}
@@ -984,6 +1048,21 @@ export default function TimelinePage() {
         </button>
         </div>
       </header>
+
+      {/* Search bar */}
+      {showSearch && view === 'journal' && (
+        <div className="shrink-0 px-4 py-2" style={{ background: '#F2EDE4', borderBottom: '1px solid #E8E2D4' }}>
+          <input
+            autoFocus
+            type="search"
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
+            placeholder="Search entries…"
+            className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none"
+            style={{ background: '#fff', border: '1px solid #C9BFA8', color: '#1A1A16' }}
+          />
+        </div>
+      )}
 
       {/* Filter bar — journal view only */}
       {view === 'journal' && entries.length > 0 && (
@@ -1140,6 +1219,32 @@ export default function TimelinePage() {
               </div>
             )}
 
+            {/* Flashback */}
+            {flashbackEntry && !filterFavs && !filterMonth && !searchQ && (
+              <button
+                onClick={() => {
+                  setFilterMonth(null)
+                  setFilterFavs(false)
+                  setTimeout(() => {
+                    document.getElementById(`entry-${flashbackEntry.date}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }, 50)
+                }}
+                className="w-full rounded-xl px-4 py-3 flex items-center gap-3 text-left animate-fadeIn"
+                style={{ background: '#EDE8DF', border: '1px solid #C9BFA8' }}
+              >
+                <span className="text-xl">🎲</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] tracking-[0.18em] uppercase font-semibold" style={{ color: '#7A7268' }}>Remember this?</p>
+                  <p className="text-sm mt-0.5 font-medium truncate" style={{ color: '#1A1A16' }}>
+                    {new Date(flashbackEntry.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </div>
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24">
+                  <path d="M9 18l6-6-6-6" stroke="#C9BFA8" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+
             {/* Timeline rail wrapper */}
             <div className="relative">
               {/* Vertical rail */}
@@ -1160,7 +1265,7 @@ export default function TimelinePage() {
                   const showMonthHeader = prevMonth !== null && entryMonth !== prevMonth
                   const monthLabel = new Date(entryMonth + '-15').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
                   return (
-                    <div key={entry.date}>
+                    <div key={entry.date} id={`entry-${entry.date}`}>
                       {showMonthHeader && (
                         <div className="flex items-center gap-3 mb-5 mt-2 pl-6">
                           <div className="flex-1 h-px" style={{ background: '#E8E2D9' }} />
@@ -1200,20 +1305,8 @@ export default function TimelinePage() {
           style={{ color: '#4A5C4A' }}
         >
           <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-            <path
-              d="M3 12L12 3l9 9"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M5 10v9a1 1 0 001 1h4v-4h4v4h4a1 1 0 001-1v-9"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d="M3 12L12 3l9 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M5 10v9a1 1 0 001 1h4v-4h4v4h4a1 1 0 001-1v-9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Today</span>
         </button>
@@ -1223,24 +1316,21 @@ export default function TimelinePage() {
           style={{ color: '#8FAF8A' }}
         >
           <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-            <rect
-              x="3"
-              y="4"
-              width="18"
-              height="18"
-              rx="2"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            />
+            <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" />
             <path d="M3 9h18" stroke="currentColor" strokeWidth="1.8" />
-            <path
-              d="M8 2v4M16 2v4"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
+            <path d="M8 2v4M16 2v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
           <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Timeline</span>
+        </button>
+        <button
+          onClick={() => navigate('/stats')}
+          className="flex-1 flex flex-col items-center pt-3 pb-1 gap-1"
+          style={{ color: '#4A5C4A' }}
+        >
+          <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
+            <path d="M4 20V14M8 20V10M12 20V6M16 20V12M20 20V8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Stats</span>
         </button>
       </nav>
 

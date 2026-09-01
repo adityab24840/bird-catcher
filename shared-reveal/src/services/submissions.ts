@@ -34,6 +34,7 @@ interface SubmitEntryInput {
   location: { lat: number; lng: number } | null
   songURL: string | null
   sketchURL: string | null
+  tags?: string[]
 }
 
 interface SubmitEntryResult {

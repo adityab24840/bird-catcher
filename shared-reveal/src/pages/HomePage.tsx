@@ -543,6 +543,7 @@ export default function HomePage() {
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [submissionText, setSubmissionText] = useState('')
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -635,8 +636,31 @@ export default function HomePage() {
   }, [partnerId])
 
   useEffect(() => {
-    setEntryDate(new Date().toLocaleDateString('en-CA'))
+    const today = new Date().toLocaleDateString('en-CA')
+    setEntryDate(today)
+    // Restore draft saved for today
+    try {
+      const raw = localStorage.getItem(`draft_${today}`)
+      if (raw) {
+        const d = JSON.parse(raw)
+        if (d.text) setSubmissionText(d.text)
+        if (d.mood) setSelectedMood(d.mood)
+        if (d.tags) setSelectedTags(d.tags)
+      }
+    } catch { /* ignore */ }
   }, [])
+
+  // Save draft whenever text/mood/tags change
+  useEffect(() => {
+    if (!entryDate) return
+    const payload = { text: submissionText, mood: selectedMood, tags: selectedTags }
+    if (!submissionText && !selectedMood && !selectedTags.length) {
+      localStorage.removeItem(`draft_${entryDate}`)
+    } else {
+      localStorage.setItem(`draft_${entryDate}`, JSON.stringify(payload))
+    }
+  }, [submissionText, selectedMood, selectedTags, entryDate])
+
 
   const { entryDoc, entryLoading } = useEntry(userDoc?.pairId ?? null, entryDate)
 
@@ -664,6 +688,19 @@ export default function HomePage() {
 
   const iSubmitted = entryDoc?.submittedMembers?.includes(user?.uid ?? '') ?? false
   const partnerSubmitted = entryDoc?.submittedMembers?.includes(partnerId ?? '') ?? false
+
+  // App badge: set when partner submitted but we haven't
+  useEffect(() => {
+    if (!('setAppBadge' in navigator)) return
+    try {
+      if (entryDoc && !iSubmitted && partnerSubmitted) {
+        navigator.setAppBadge(1)
+      } else {
+        navigator.clearAppBadge()
+      }
+    } catch { /* not supported */ }
+    return () => { try { navigator.clearAppBadge() } catch { /* ignore */ } }
+  }, [iSubmitted, partnerSubmitted, entryDoc])
   const partnerFirstName = partnerDoc?.displayName?.split(' ')[0] ?? 'them'
 
   const todayLabel = entryDate
@@ -724,12 +761,14 @@ export default function HomePage() {
       if (sketchBlob && userDoc?.pairId && user) {
         sketchURL = await uploadSubmissionSketch(userDoc.pairId, entryDate, user.uid, sketchBlob)
       }
-      await submitEntryFn({ entryDate, text: submissionText.trim() || null, photoURL, audioURL, mood: selectedMood, location: locationData, songURL, sketchURL })
+      await submitEntryFn({ entryDate, text: submissionText.trim() || null, photoURL, audioURL, mood: selectedMood, location: locationData, songURL, sketchURL, tags: selectedTags.length ? selectedTags : undefined })
       haptic(15)
+      localStorage.removeItem(`draft_${entryDate}`)
       setSelectedPhoto(null)
       setPhotoPreview(null)
       setSubmissionText('')
       setSelectedMood(null)
+      setSelectedTags([])
       setAudioBlob(null)
       setLocationData(null)
       setSongURL(null)
@@ -766,6 +805,7 @@ export default function HomePage() {
     setPhotoPreview(null)
     setSubmissionText('')
     setSelectedMood(null)
+    setSelectedTags([])
     setAudioBlob(null)
     setLocationData(null)
     setSongURL(null)
@@ -1139,6 +1179,20 @@ export default function HomePage() {
         ) : (
           /* ── SUBMIT FORM ── */
           <div className="space-y-4 pt-2 pb-4 animate-fadeUp">
+            {/* Day 1 welcome card */}
+            {daysTogether === 1 && (
+              <div
+                className="rounded-2xl px-5 py-5 animate-fadeIn"
+                style={{ background: '#E8F0E9', border: '1px solid #8FAF8A' }}
+              >
+                <p className="text-2xl mb-2">🌿</p>
+                <p className="text-sm font-bold" style={{ color: '#1C2B1E' }}>Welcome. You go first.</p>
+                <p className="text-xs leading-relaxed mt-1.5" style={{ color: '#2D5A3D' }}>
+                  Share something that reminded you of them today — a photo, a thought, anything.
+                  It stays completely private until you both share.
+                </p>
+              </div>
+            )}
             <p
               className="text-[10px] tracking-[0.2em] uppercase font-semibold"
               style={{ color: '#7A7268' }}
@@ -1243,6 +1297,43 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
+
+            {/* Tags */}
+            {(() => {
+              const TAG_OPTIONS = [
+                { key: '🧳 trip', label: '🧳 trip' },
+                { key: '💔 hard day', label: '💔 hard day' },
+                { key: '🎉 milestone', label: '🎉 milestone' },
+                { key: '🌀 just because', label: '🌀 just because' },
+                { key: '🎂 birthday', label: '🎂 birthday' },
+              ]
+              return (
+                <div>
+                  <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: '#C9BFA8' }}>Tag it</p>
+                  <div className="flex flex-wrap gap-2">
+                    {TAG_OPTIONS.map(({ key, label }) => {
+                      const active = selectedTags.includes(key)
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          disabled={submitting || uploadingPhoto}
+                          onClick={() => setSelectedTags((prev) => active ? prev.filter((t) => t !== key) : [...prev, key])}
+                          className="rounded-full px-3 py-1.5 text-xs font-medium transition-all active:scale-95 disabled:opacity-40"
+                          style={{
+                            background: active ? '#E8F0E9' : '#F8F5F0',
+                            border: `1.5px solid ${active ? '#2D5A3D' : '#E8E2D9'}`,
+                            color: active ? '#2D5A3D' : '#7A7268',
+                          }}
+                        >
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Attachment strip */}
             <div className="grid grid-cols-4 gap-2">
