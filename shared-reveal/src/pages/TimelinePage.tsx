@@ -294,29 +294,11 @@ function CardMedia({
 }
 
 /* ── Polaroid card — for entries with a photo ─────────────────────────────── */
-// Deterministic layout seed from uid — stable across renders, varies per submission
-function uidSeed(uid: string, mod: number) {
-  let h = 0
-  for (let i = 0; i < uid.length; i++) h = (h * 31 + uid.charCodeAt(i)) >>> 0
-  return h % mod
-}
-
-const CARD_LAYOUTS = [
-  // 0: full-bleed, standard
-  { marginLeft: 0, marginRight: 0, borderRadius: 4 },
-  // 1: slight inset left
-  { marginLeft: '6%', marginRight: 0, borderRadius: 6 },
-  // 2: slight inset right
-  { marginLeft: 0, marginRight: '6%', borderRadius: 4 },
-  // 3: centred, narrower
-  { marginLeft: '4%', marginRight: '4%', borderRadius: 6 },
-]
-
 function PolaroidCard({
-  sub, member, isFavorited, onToggleFavorite, onPhotoTap, tilt = 0,
+  sub, member, isFavorited, onToggleFavorite, onPhotoTap, tilt = 0, compact = false,
 }: {
   sub: SubmissionDoc; member: UserDoc | undefined; isFavorited: boolean
-  onToggleFavorite: () => void; onPhotoTap: (url: string) => void; tilt?: number
+  onToggleFavorite: () => void; onPhotoTap: (url: string) => void; tilt?: number; compact?: boolean
 }) {
   const photos = sub.photoURLs?.length ? sub.photoURLs : sub.photoURL ? [sub.photoURL] : []
   const texts = sub.texts?.length ? sub.texts : sub.text ? [sub.text] : []
@@ -324,37 +306,36 @@ function PolaroidCard({
   const timeLabel = ts ? ts.toDate().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''
   const firstName = member?.displayName?.split(' ')[0] ?? '…'
   const moods = sub.mood && MOOD_EMOJIS[sub.mood] ? MOOD_EMOJIS[sub.mood] : null
-  const layout = CARD_LAYOUTS[uidSeed(sub.uid, CARD_LAYOUTS.length)]
 
   return (
     <div className="relative animate-fadeIn"
       style={{
-        marginLeft: layout.marginLeft,
-        marginRight: layout.marginRight,
         transform: `rotate(${tilt}deg)`,
         transformOrigin: 'center top',
         filter: 'drop-shadow(0 6px 20px rgba(28,43,30,0.18))',
       }}
     >
-      <div className="relative overflow-hidden" style={{ borderRadius: layout.borderRadius, background: 'var(--c-bg-card)' }}>
-        {/* Photo(s) — full height, no crop */}
+      <div className="relative overflow-hidden" style={{ borderRadius: 4, background: 'var(--c-bg-card)' }}>
+        {/* Photo(s) — full aspect ratio in single-col, fixed crop in 2-col */}
         {photos[0] && (
           <img src={photos[0]} alt="" onClick={() => onPhotoTap(photos[0])}
             loading="lazy"
             className="cursor-pointer w-full block active:opacity-90 transition-opacity"
-            style={{ display: 'block', maxHeight: 520, objectFit: 'contain', background: '#000' }} />
+            style={compact
+              ? { height: 160, objectFit: 'cover', display: 'block' }
+              : { width: '100%', height: 'auto', display: 'block' }} />
         )}
-        {photos.slice(1).map((url, i) => (
+        {!compact && photos.slice(1).map((url, i) => (
           <img key={i} src={url} alt="" loading="lazy" onClick={() => onPhotoTap(url)}
             className="cursor-pointer w-full block active:opacity-90 transition-opacity"
-            style={{ display: 'block', maxHeight: 400, objectFit: 'contain', background: '#000', borderTop: '1px solid var(--c-border)' }} />
+            style={{ width: '100%', height: 'auto', display: 'block', borderTop: '1px solid var(--c-border)' }} />
         ))}
-        {/* Sketch — full height, shown after photos */}
+        {/* Sketch — full width at natural aspect ratio */}
         {sub.sketchURL && (
           <img src={sub.sketchURL} alt="sketch" onClick={() => onPhotoTap(sub.sketchURL!)}
             loading="lazy"
             className="w-full block cursor-pointer"
-            style={{ display: 'block', borderTop: photos[0] ? '1px solid var(--c-border)' : undefined }} />
+            style={{ width: '100%', height: 'auto', display: 'block', borderTop: photos[0] ? '1px solid var(--c-border)' : undefined }} />
         )}
 
         {/* Polaroid bottom */}
@@ -538,6 +519,7 @@ function SubmissionCard({
   onPhotoTap,
   variant = 'default',
   tilt = 0,
+  compact = false,
 }: {
   sub: SubmissionDoc
   member: UserDoc | undefined
@@ -546,6 +528,7 @@ function SubmissionCard({
   onPhotoTap: (url: string) => void
   variant?: 'polaroid' | 'journal' | 'default'
   tilt?: number
+  compact?: boolean
 }) {
   const photos = sub.photoURLs?.length ? sub.photoURLs : sub.photoURL ? [sub.photoURL] : []
   const texts = sub.texts?.length ? sub.texts : sub.text ? [sub.text] : []
@@ -554,7 +537,7 @@ function SubmissionCard({
   const hasContent = hasVisualMedia || texts.length > 0 || audios.length > 0 || !!sub.location || !!sub.songURL
 
   if (variant === 'polaroid' || (variant === 'default' && hasVisualMedia)) {
-    return <PolaroidCard sub={sub} member={member} isFavorited={isFavorited} onToggleFavorite={onToggleFavorite} onPhotoTap={onPhotoTap} tilt={tilt} />
+    return <PolaroidCard sub={sub} member={member} isFavorited={isFavorited} onToggleFavorite={onToggleFavorite} onPhotoTap={onPhotoTap} tilt={tilt} compact={compact} />
   }
   if (variant === 'journal' || (variant === 'default' && !hasVisualMedia)) {
     return <JournalCard sub={sub} member={member} isFavorited={isFavorited} onToggleFavorite={onToggleFavorite} onPhotoTap={onPhotoTap} />
@@ -704,6 +687,7 @@ function DaySection({
                   onToggleFavorite={() => onToggleFav(entry.date, sub.uid)}
                   onPhotoTap={onPhotoTap}
                   tilt={idx === 0 ? 1.2 : -0.8}
+                  compact
                 />
               ))}
             </div>
