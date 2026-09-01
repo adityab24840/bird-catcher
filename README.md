@@ -12,6 +12,95 @@ The app is private by design: no public profiles, no followers, no discovery. Ju
 
 ---
 
+## Features
+
+### Daily submission
+Each day, open the app and share whatever reminded you of the other person. You can combine:
+- **Text** — write as much or as little as you want, with a rotating daily prompt to get you started
+- **Photos** — pick from your camera roll or take one directly; multiple photos per submission
+- **Voice memo** — record a voice note; plays back with a visual waveform
+- **Song** — paste a Spotify link; embeds an in-app player
+- **Location** — share where you are (or where you were); shows a map tile + opens in Google Maps
+- **Sketch** — draw something freehand on a canvas
+- **Mood** — tag the feeling: happy, missing you, proud, or random
+
+You can resubmit any day to update or add to what you've already shared.
+
+### Privacy and reveal
+- Your entry is invisible to your partner until both of you have submitted — enforced by database security rules, not just the UI
+- Once both submit, entries reveal automatically and both get a push notification
+- Either person can tap **Reveal Anyway** to unlock early — useful when one person is travelling or in a different time zone
+- When auto-reveal fires on your device, a confetti animation plays
+
+### Shared timeline
+- Browse every revealed entry in a vertical journal layout — vertical rail, date markers, photo-first editorial cards
+- Entries with a full reveal are filled dots; partial entries are outlined
+- Month section headers separate the feed
+- Switch to calendar view to jump to any date
+
+### Favourites
+- Tap the ❤ corner badge on any submission card to favourite it
+- Filter the timeline to show only favourited entries via the Favourites button
+
+### On This Day
+- If there are revealed entries from the same date in previous years, a banner surfaces them at the top of the timeline
+
+### Reactions
+- On any revealed entry, tap an emoji to react (❤️ 😂 😢 🌿 ✨); your partner sees it in real time
+
+### Ping
+- Send a quick "thinking of you" notification with no content attached
+
+### Streak
+- The app tracks consecutive days with a mutual reveal — displayed as a 🔥 streak counter on the home screen
+
+### Push notifications
+- Submissions, reveals, pings, and weekly/monthly summaries all trigger push notifications
+- Set a daily reminder time in account settings to be nudged if you haven't submitted by that hour
+
+### Export
+- Generate a print-ready PDF journal of all revealed entries, grouped by month, from the timeline screen
+
+### Entry deletion
+- Request to delete a revealed entry; the other person must consent before it's permanently removed from Firestore and Storage
+
+### Pair management
+- Create a pair and share the 6-character invite code with your person
+- Leave a pair at any time from account settings; both users return to pair setup
+
+---
+
+## How to Use
+
+### Getting started
+1. Open the app and sign in with Google
+2. One person taps **Create a pair** and shares the 6-character code (expires in 24 hours)
+3. The other person taps **Join with code**, enters the code — both land on the home screen
+
+### Submitting your daily entry
+1. Open the app on any day
+2. Write in the text box and/or tap the attachment strip to add a photo, voice memo, song, location, or sketch
+3. Pick a mood if you want
+4. Tap **Share** — your entry is saved and stays hidden from your partner
+
+### Seeing each other's entries
+- If your partner has already submitted and you haven't: you'll see their tile blurred on the home screen and in the timeline — submit first to reveal, or tap **Reveal Anyway**
+- If you submitted first: a waiting state shows until your partner submits; the entries reveal automatically the moment they do
+
+### Browsing the timeline
+1. Tap **Timeline** in the bottom nav
+2. Scroll through the journal view — each day is a card with photos, text, and attribution
+3. Tap any photo to open the lightbox (pinch to zoom)
+4. Tap the ❤ on a card to favourite it
+5. Tap **Favourites** at the top to filter to saved entries only
+6. Switch to **Calendar** view to jump to a specific date
+
+### Exporting your journal
+1. In the timeline, tap **Export PDF**
+2. The app loads all revealed entries and opens a print dialog automatically
+
+---
+
 A private PWA for exactly two people. Each person independently submits something — a photo, text, voice memo, sketch, song, or location — that reminded them of the other person that day. Their submission stays private until both have submitted (auto-reveal) or one person triggers "Reveal Anyway." Revealed entries form a permanent shared timeline they can browse together.
 
 **Core principle:** Submission privacy is enforced at the Firestore security-rules layer — neither person can read the other's entry until the reveal condition is satisfied, regardless of frontend state.
