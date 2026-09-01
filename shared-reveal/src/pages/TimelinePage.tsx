@@ -601,12 +601,14 @@ function DaySection({
   const partnerSubmitted = partnerUid ? (entry.submittedMembers?.includes(partnerUid) ?? false) : false
 
   useEffect(() => {
-    if (!memberUids.length) return
+    // Fall back to currentUid when memberDocs hasn't loaded yet (race on first render)
+    const effectiveUids = memberUids.length ? memberUids : (currentUid ? [currentUid] : [])
+    if (!effectiveUids.length) return
 
     const subMap: Record<string, SubmissionDoc> = {}
 
     // When not revealed, only subscribe to own submission (security rules block partner reads)
-    const uidsToLoad = isRevealed ? memberUids : memberUids.filter((u) => u === currentUid)
+    const uidsToLoad = isRevealed ? effectiveUids : effectiveUids.filter((u) => u === currentUid)
 
     const unsubs = uidsToLoad.map((uid) =>
       onSnapshot(
@@ -617,7 +619,7 @@ function DaySection({
           } else {
             delete subMap[uid]
           }
-          const sorted = memberUids.map((u) => subMap[u]).filter((s): s is SubmissionDoc => s !== null && s !== undefined)
+          const sorted = effectiveUids.map((u) => subMap[u]).filter((s): s is SubmissionDoc => s !== null && s !== undefined)
           sorted.sort((a, b) => (b.submittedAt?.toMillis?.() ?? 0) - (a.submittedAt?.toMillis?.() ?? 0))
           setSubmissions(sorted)
         },
