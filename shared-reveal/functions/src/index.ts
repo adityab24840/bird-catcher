@@ -91,7 +91,7 @@ const SubmitEntrySchema = z
     location: z.object({ lat: z.number(), lng: z.number() }).nullable().optional(),
     songURL: z.string().url().regex(/^https:\/\/open\.spotify\.com\/(track|album|playlist|episode)\/[A-Za-z0-9]+/).nullable().optional(),
     sketchURL: z.url().nullable().optional(),
-    tags: z.array(z.string().max(20)).max(5).optional(),
+    tags: z.array(z.string().max(20)).max(5).nullable().optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.photoURL && !data.text?.trim() && !data.audioURL && !data.location && !data.songURL && !data.sketchURL) {
@@ -250,7 +250,8 @@ export const submitEntry = onCall(callableOptions, async (request) => {
     throw new HttpsError('invalid-argument', 'Invalid submission data')
   }
 
-  const { entryDate, text, photoURL, audioURL = null, mood = null, location = null, songURL = null, sketchURL = null, tags = [] } = parsed.data
+  const { entryDate, text, photoURL, audioURL = null, mood = null, location = null, songURL = null, sketchURL = null } = parsed.data
+  const tags = parsed.data.tags ?? []
   const uid = request.auth.uid
   const db = getFirestore()
   const userRef = db.doc(`users/${uid}`)
