@@ -220,103 +220,62 @@ function SubmissionCard({
     : ''
   const isUpdated = !!(sub.updatedAt)
 
-  const photos = sub.photoURLs?.length
-    ? sub.photoURLs
-    : sub.photoURL
-    ? [sub.photoURL]
-    : []
+  const photos = sub.photoURLs?.length ? sub.photoURLs : sub.photoURL ? [sub.photoURL] : []
   const texts = sub.texts?.length ? sub.texts : sub.text ? [sub.text] : []
   const audios = sub.audioURLs ?? []
   const hasContent = photos.length > 0 || texts.length > 0 || audios.length > 0 || !!sub.sketchURL || !!sub.location || !!sub.songURL
+  const firstName = member?.displayName?.split(' ')[0] ?? '…'
 
   return (
     <div
-      className="relative bg-white rounded-xl overflow-hidden border animate-fadeIn"
-      style={{ borderColor: '#E8E2D4', boxShadow: '0 1px 6px rgba(28,43,30,0.06)' }}
+      className="relative bg-white rounded-2xl overflow-hidden animate-fadeIn"
+      style={{ boxShadow: '0 2px 16px rgba(28,43,30,0.09)' }}
     >
-      {/* Card header */}
-      <div
-        className="flex items-center gap-2.5 px-4 py-3 border-b"
-        style={{ borderColor: '#F0EBE0' }}
-      >
-        <Avatar photoURL={member?.photoURL ?? null} name={member?.displayName ?? null} />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold leading-tight" style={{ color: '#1A1A16' }}>
-            {member?.displayName?.split(' ')[0] ?? '…'}
-          </p>
-          <p
-            className="text-[10px] tracking-[0.1em] uppercase mt-0.5 flex items-center gap-1"
-            style={{ color: '#7A7268' }}
-          >
-            {timeLabel}{isUpdated && <span style={{ color: '#C9BFA8' }}>· updated</span>}
-          </p>
-        </div>
-        {sub.mood && MOOD_EMOJIS[sub.mood] && (
-          <span className="text-xl shrink-0" title={sub.mood}>
-            {MOOD_EMOJIS[sub.mood]}
-          </span>
-        )}
-      </div>
-      {/* Corner favourite button */}
-      <button
-        onClick={onToggleFavorite}
-        className="absolute top-2.5 right-2.5 h-8 w-8 rounded-full flex items-center justify-center text-base transition-transform active:scale-75"
-        style={{
-          background: isFavorited ? '#FDECEA' : 'rgba(255,255,255,0.85)',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.10)',
-          backdropFilter: 'blur(4px)',
-        }}
-        aria-label={isFavorited ? 'Unfavorite' : 'Favourite'}
-      >
-        {isFavorited ? '❤️' : '🤍'}
-      </button>
+      {/* Leading photo — full bleed */}
+      {photos[0] && (
+        <img
+          src={photos[0]}
+          alt=""
+          onClick={() => onPhotoTap(photos[0])}
+          className="cursor-pointer w-full object-cover block active:opacity-90 transition-opacity"
+          style={{ height: 220 }}
+        />
+      )}
 
-      {/* Photos */}
-      {photos.map((url, i) => (
+      {/* Additional photos */}
+      {photos.slice(1).map((url, i) => (
         <img
           key={i}
           src={url}
-          alt="submission"
+          alt=""
           onClick={() => onPhotoTap(url)}
-          className="cursor-pointer active:opacity-90 transition-opacity"
-          style={{
-            width: '100%',
-            height: 260,
-            objectFit: 'cover',
-            display: 'block',
-            borderBottom: '1px solid #F0EBE0',
-          }}
+          className="cursor-pointer w-full object-cover block active:opacity-90 border-t"
+          style={{ height: 180, borderColor: '#F0EBE0' }}
         />
-      ))}
-
-      {/* Texts */}
-      {texts.map((t, i) => (
-        <p
-          key={i}
-          className="px-4 py-3.5 text-[15px] leading-relaxed border-b last:border-0"
-          style={{ color: '#1A1A16', borderColor: '#F0EBE0' }}
-        >
-          {t}
-        </p>
       ))}
 
       {/* Sketch */}
       {sub.sketchURL && (
-        <img
-          src={sub.sketchURL}
-          alt="sketch"
-          style={{ width: '100%', display: 'block', borderBottom: '1px solid #F0EBE0' }}
-        />
+        <img src={sub.sketchURL} alt="sketch" className="w-full block border-t" style={{ borderColor: '#F0EBE0' }} />
       )}
 
-      {/* Location */}
+      {/* Body text */}
+      {texts.length > 0 && (
+        <div className="px-4 pt-4 pb-1">
+          {texts.map((t, i) => (
+            <p key={i} className="text-[15px] leading-relaxed mb-2 last:mb-0" style={{ color: '#1A1A16' }}>{t}</p>
+          ))}
+        </div>
+      )}
+
+      {/* Location map */}
       {sub.location && (
-        <div className="border-b last:border-0" style={{ borderColor: '#F0EBE0' }}>
+        <div className="mt-3 mx-4 rounded-xl overflow-hidden border" style={{ borderColor: '#E8E2D9' }}>
           <iframe
             title="location map"
             src={`https://www.openstreetmap.org/export/embed.html?bbox=${sub.location.lng - 0.012},${sub.location.lat - 0.008},${sub.location.lng + 0.012},${sub.location.lat + 0.008}&layer=mapnik&marker=${sub.location.lat},${sub.location.lng}`}
             width="100%"
-            height="170"
+            height="150"
             loading="lazy"
             style={{ display: 'block', border: 'none', pointerEvents: 'none' }}
           />
@@ -324,48 +283,74 @@ function SubmissionCard({
             href={`https://www.google.com/maps?q=${sub.location.lat},${sub.location.lng}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-4 py-2"
+            className="flex items-center gap-1.5 px-3 py-1.5"
             style={{ background: '#F8F5F0' }}
           >
-            <span className="text-sm">📍</span>
-            <span className="text-[11px] font-medium" style={{ color: '#2D5A3D' }}>
+            <span className="text-xs">📍</span>
+            <span className="text-[10px] font-medium" style={{ color: '#2D5A3D' }}>
               {sub.location.lat.toFixed(4)}, {sub.location.lng.toFixed(4)}
             </span>
-            <span className="text-[10px] ml-auto" style={{ color: '#C9BFA8' }}>open in maps ↗</span>
+            <span className="text-[9px] ml-auto" style={{ color: '#C9BFA8' }}>open ↗</span>
           </a>
         </div>
       )}
 
       {/* Song embed */}
       {sub.songURL && (
-        <div className="border-b last:border-0" style={{ borderColor: '#F0EBE0' }}>
+        <div className="mt-3 mx-4 rounded-xl overflow-hidden">
           <iframe
             src={`https://open.spotify.com/embed/${sub.songURL.replace('https://open.spotify.com/', '')}?utm_source=generator`}
             width="100%"
-            height="152"
+            height="80"
             frameBorder="0"
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
             loading="lazy"
-            style={{ display: 'block' }}
+            style={{ display: 'block', borderRadius: 12 }}
           />
         </div>
       )}
 
       {/* Audio memos */}
       {audios.map((url, i) => (
-        <div key={i} className="border-b last:border-0" style={{ borderColor: '#F0EBE0' }}>
-          <p className="px-4 pt-3 text-[10px] tracking-[0.12em] uppercase" style={{ color: '#C9BFA8' }}>
-            🎙️ voice memo
+        <div key={i} className="mt-2 mx-4 rounded-xl overflow-hidden border" style={{ borderColor: '#E8E2D9' }}>
+          <p className="px-4 pt-2 text-[9px] tracking-[0.15em] uppercase font-semibold" style={{ color: '#C9BFA8' }}>
+            🎙 Voice memo
           </p>
           <AudioPlayer url={url} />
         </div>
       ))}
 
       {!hasContent && (
-        <p className="px-4 py-3 text-sm italic" style={{ color: '#C9BFA8' }}>
-          Nothing shared
-        </p>
+        <p className="px-4 py-4 text-sm italic" style={{ color: '#C9BFA8' }}>Nothing shared</p>
       )}
+
+      {/* Footer — attribution bar */}
+      <div className="flex items-center gap-2.5 px-4 pt-3 pb-3.5 mt-1">
+        <Avatar photoURL={member?.photoURL ?? null} name={member?.displayName ?? null} />
+        <div className="flex-1 min-w-0">
+          <span className="text-[13px] font-semibold" style={{ color: '#1A1A16' }}>{firstName}</span>
+          <span className="text-[11px] ml-1.5" style={{ color: '#C9BFA8' }}>
+            {timeLabel}{isUpdated && ' · edited'}
+          </span>
+        </div>
+        {sub.mood && MOOD_EMOJIS[sub.mood] && (
+          <span className="text-base" title={sub.mood}>{MOOD_EMOJIS[sub.mood]}</span>
+        )}
+      </div>
+
+      {/* Corner favourite */}
+      <button
+        onClick={onToggleFavorite}
+        className="absolute top-2.5 right-2.5 h-8 w-8 rounded-full flex items-center justify-center text-base transition-transform active:scale-75"
+        style={{
+          background: isFavorited ? 'rgba(253,236,234,0.95)' : 'rgba(255,255,255,0.85)',
+          boxShadow: '0 1px 6px rgba(0,0,0,0.12)',
+          backdropFilter: 'blur(6px)',
+        }}
+        aria-label={isFavorited ? 'Unfavorite' : 'Favourite'}
+      >
+        {isFavorited ? '❤️' : '🤍'}
+      </button>
     </div>
   )
 }
@@ -439,17 +424,27 @@ function DaySection({
   const dateLabel = isToday ? 'Today' : `${day} ${month} ${year}`
 
   return (
-    <div className="space-y-3 animate-fadeUp">
-      {/* Date separator with favorite toggle */}
-      <div className="flex items-center gap-3 px-1">
-        <div className="flex-1 h-px" style={{ background: '#C9BFA8' }} />
+    <div className="animate-fadeUp">
+      {/* Timeline date marker */}
+      <div className="flex items-center gap-3 mb-3">
+        <div
+          className="shrink-0 h-3 w-3 rounded-full border-2"
+          style={{
+            background: isRevealed ? '#2D5A3D' : '#F2EDE4',
+            borderColor: '#2D5A3D',
+          }}
+        />
         <span
-          className="text-[10px] tracking-[0.2em] uppercase font-semibold shrink-0"
-          style={{ color: '#7A7268' }}
+          className="text-[11px] tracking-[0.18em] font-bold uppercase"
+          style={{ color: isToday ? '#2D5A3D' : '#7A7268' }}
         >
           {dateLabel}
         </span>
-        <div className="flex-1 h-px" style={{ background: '#C9BFA8' }} />
+        {entry.status === 'one_submitted' && (
+          <span className="text-[9px] tracking-[0.1em] uppercase px-1.5 py-0.5 rounded-full font-medium" style={{ background: '#E8F0E9', color: '#2D5A3D' }}>
+            in progress
+          </span>
+        )}
       </div>
 
       {subError && (
@@ -459,12 +454,12 @@ function DaySection({
       )}
 
       {submissions.length === 0 && !subError ? (
-        <div className="space-y-3">
-          <div className="h-28 rounded-xl animate-pulse" style={{ background: '#E8E2D4' }} />
-          <div className="h-28 rounded-xl animate-pulse" style={{ background: '#E8E2D4' }} />
+        <div className="space-y-3 pl-6">
+          <div className="h-28 rounded-2xl animate-pulse" style={{ background: '#E8E2D4' }} />
+          <div className="h-16 rounded-2xl animate-pulse" style={{ background: '#EDE8DF' }} />
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 pl-6">
           {submissions.map((sub) => (
             <SubmissionCard
               key={sub.uid}
@@ -1088,7 +1083,7 @@ export default function TimelinePage() {
           />
         ) : (
           /* Journal view */
-          <div className="space-y-8 px-4 pt-2 pb-4">
+          <div className="px-4 pt-2 pb-8">
             {/* No results after filtering */}
             {filteredEntries.length === 0 && (filterFavs || filterMonth) && (
               <p className="text-center text-sm pt-12" style={{ color: '#C9BFA8' }}>
@@ -1143,19 +1138,51 @@ export default function TimelinePage() {
               </div>
             )}
 
-            {filteredEntries.map((entry) => (
-              <DaySection
-                key={entry.date}
-                entry={entry}
-                pairId={pairId!}
-                memberUids={Object.keys(memberDocs)}
-                memberDocs={memberDocs}
-                currentUid={user?.uid ?? ''}
-                favKeys={favKeys}
-                onToggleFav={toggleFav}
-                onPhotoTap={setLightbox}
-              />
-            ))}
+            {/* Timeline rail wrapper */}
+            <div className="relative">
+              {/* Vertical rail */}
+              {filteredEntries.length > 0 && (
+                <div
+                  className="absolute top-1.5 bottom-8 w-px"
+                  style={{
+                    left: 5,
+                    background: 'linear-gradient(to bottom, #2D5A3D55, #C9BFA888, #2D5A3D22)',
+                  }}
+                />
+              )}
+
+              <div className="space-y-6">
+                {filteredEntries.map((entry, idx) => {
+                  const entryMonth = entry.date.slice(0, 7)
+                  const prevMonth = idx > 0 ? filteredEntries[idx - 1].date.slice(0, 7) : null
+                  const showMonthHeader = prevMonth !== null && entryMonth !== prevMonth
+                  const monthLabel = new Date(entryMonth + '-15').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
+                  return (
+                    <div key={entry.date}>
+                      {showMonthHeader && (
+                        <div className="flex items-center gap-3 mb-5 mt-2 pl-6">
+                          <div className="flex-1 h-px" style={{ background: '#E8E2D9' }} />
+                          <span className="text-[9px] tracking-[0.25em] font-bold shrink-0" style={{ color: '#C9BFA8' }}>
+                            {monthLabel}
+                          </span>
+                          <div className="flex-1 h-px" style={{ background: '#E8E2D9' }} />
+                        </div>
+                      )}
+                      <DaySection
+                        entry={entry}
+                        pairId={pairId!}
+                        memberUids={Object.keys(memberDocs)}
+                        memberDocs={memberDocs}
+                        currentUid={user?.uid ?? ''}
+                        favKeys={favKeys}
+                        onToggleFav={toggleFav}
+                        onPhotoTap={setLightbox}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         )}
       </main>
