@@ -3,6 +3,8 @@ import { collection, doc, getDocs, getDoc, query, where } from 'firebase/firesto
 import { useNavigate } from 'react-router-dom'
 import { db } from '../firebase/config'
 import { useAuth } from '../hooks/useAuth'
+import BottomNav from '../components/BottomNav'
+import { usePairId } from '../hooks/usePair'
 import type { EntryDoc, PairDoc, SubmissionDoc, UserDoc } from '../types/index'
 
 const MOOD_LABELS: Record<string, { emoji: string; label: string }> = {
@@ -31,8 +33,10 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
 
 export default function StatsPage() {
   const { user } = useAuth()
+  const { pairId, pairLoading } = usePairId(user?.uid ?? null)
   const navigate = useNavigate()
 
+  const [tick, setTick] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pairDoc, setPairDoc] = useState<PairDoc | null>(null)
@@ -41,17 +45,20 @@ export default function StatsPage() {
   const [submissions, setSubmissions] = useState<SubmissionDoc[]>([])
 
   useEffect(() => {
-    if (!user) return
+    setError(null)
+    setLoading(true)
+    setPairDoc(null)
+    setEntries([])
+    setSubmissions([])
+    if (!user || pairLoading) return
+    if (!pairId) { setError('Not in a pair'); setLoading(false); return }
+    const pid: string = pairId
     async function load() {
       try {
-        const userSnap = await getDoc(doc(db, 'users', user!.uid))
-        if (!userSnap.exists()) throw new Error('No user doc')
-        const pairId: string | null = userSnap.data().pairId ?? null
-        if (!pairId) { setError('Not in a pair'); setLoading(false); return }
 
         const [pairSnap, entriesSnap] = await Promise.all([
-          getDoc(doc(db, 'pairs', pairId)),
-          getDocs(query(collection(db, 'pairs', pairId, 'entries'), where('status', '==', 'revealed'))),
+          getDoc(doc(db, 'pairs', pid)),
+          getDocs(query(collection(db, 'pairs', pid, 'entries'), where('status', '==', 'revealed'))),
         ])
 
         if (!pairSnap.exists()) throw new Error('Pair not found')
@@ -69,13 +76,16 @@ export default function StatsPage() {
         const entryList = entriesSnap.docs.map((d) => d.data() as EntryDoc)
         setEntries(entryList)
 
-        // Load all submissions for revealed entries — silently skip any that fail rules
+        // Read each member's submission by uid — avoids collection LIST query which
+        // Firestore rejects when rules use get() calls (can't guarantee list-safety).
         const allSubs: SubmissionDoc[] = []
         await Promise.all(entryList.map(async (entry) => {
-          try {
-            const subsSnap = await getDocs(collection(db, 'pairs', pairId, 'entries', entry.date, 'submissions'))
-            subsSnap.docs.forEach((d) => allSubs.push(d.data() as SubmissionDoc))
-          } catch { /* partner submission may not be readable — skip */ }
+          await Promise.all(memberIds.map(async (uid) => {
+            try {
+              const subSnap = await getDoc(doc(db, 'pairs', pid, 'entries', entry.date, 'submissions', uid))
+              if (subSnap.exists()) allSubs.push(subSnap.data() as SubmissionDoc)
+            } catch { /* submission not readable — skip */ }
+          }))
         }))
         setSubmissions(allSubs)
         setLoading(false)
@@ -86,7 +96,8 @@ export default function StatsPage() {
       }
     }
     load()
-  }, [user])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, pairId, pairLoading, tick])
 
   const stats = useMemo(() => {
     if (!entries.length) return null
@@ -138,15 +149,16 @@ export default function StatsPage() {
       }
     }
 
-    // Photo, voice, song counts from submissions
+    // Photo, voice, song, text counts from submissions
     const mediaCount = submissions.reduce(
       (acc, s) => ({
+        texts: acc.texts + (s.texts?.length ?? 0) + (s.text ? 1 : 0),
         photos: acc.photos + (s.photoURLs?.length ?? 0) + (s.photoURL ? 1 : 0),
         voice: acc.voice + (s.audioURLs?.length ?? 0),
-        songs: acc.songs + (s.songURL ? 1 : 0),
+        songs: acc.songs + (s.songURLs?.length ?? (s.songURL ? 1 : 0)),
         sketches: acc.sketches + (s.sketchURL ? 1 : 0),
       }),
-      { photos: 0, voice: 0, songs: 0, sketches: 0 }
+      { texts: 0, photos: 0, voice: 0, songs: 0, sketches: 0 }
     )
 
     return { totalReveals, firstDate, lastDate, currentStreak, longestStreak, moodByUid, dowCounts, perMember, mediaCount }
@@ -169,7 +181,12 @@ export default function StatsPage() {
         <span className="text-[11px] tracking-[0.2em] uppercase font-bold" style={{ color: 'var(--c-text-2)' }}>
           Your Stats
         </span>
-        <div className="w-10" />
+        <button
+          onClick={() => setTick(t => t + 1)}
+          className="w-10 flex items-center justify-center text-lg"
+          style={{ color: 'var(--c-green)' }}
+          aria-label="Refresh"
+        >↺</button>
       </header>
 
       <div className="px-5 pb-20 space-y-4">
@@ -224,8 +241,9 @@ export default function StatsPage() {
               <p className="text-[10px] tracking-[0.15em] uppercase font-bold mb-4" style={{ color: 'var(--c-text-3)' }}>
                 What you've shared
               </p>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-5 gap-2">
                 {[
+                  { emoji: '💬', label: 'Messages', count: stats.mediaCount.texts },
                   { emoji: '📷', label: 'Photos', count: stats.mediaCount.photos },
                   { emoji: '🎙️', label: 'Voice', count: stats.mediaCount.voice },
                   { emoji: '🎵', label: 'Songs', count: stats.mediaCount.songs },
@@ -311,6 +329,7 @@ export default function StatsPage() {
           </>
         )}
       </div>
+      <BottomNav current="stats" />
     </div>
   )
 }

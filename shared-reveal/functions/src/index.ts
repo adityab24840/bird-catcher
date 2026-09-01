@@ -294,6 +294,7 @@ export const submitEntry = onCall(callableOptions, async (request) => {
         texts: text ? [text] : [],
         mood: mood ?? null,
         location: location ?? null,
+        songURLs: songURL ? [songURL] : [],
         songURL: songURL ?? null,
         sketchURL: sketchURL ?? null,
         tags: tags ?? [],
@@ -304,6 +305,8 @@ export const submitEntry = onCall(callableOptions, async (request) => {
       const existingPhotos: string[] = existing.photoURLs ?? (existing.photoURL ? [existing.photoURL] : [])
       const existingAudios: string[] = existing.audioURLs ?? []
       const existingTexts: string[] = existing.texts ?? (existing.text ? [existing.text] : [])
+      const existingSongs: string[] = existing.songURLs ?? (existing.songURL ? [existing.songURL] : [])
+      const updatedSongs: string[] = songURL ? [...existingSongs, songURL] : existingSongs
       tx.set(submissionRef, {
         uid,
         photoURLs: photoURL ? [...existingPhotos, photoURL] : existingPhotos,
@@ -311,7 +314,8 @@ export const submitEntry = onCall(callableOptions, async (request) => {
         texts: text ? [...existingTexts, text] : existingTexts,
         mood: mood ?? existing.mood ?? null,
         location: location ?? existing.location ?? null,
-        songURL: songURL ?? existing.songURL ?? null,
+        songURLs: updatedSongs,
+        songURL: updatedSongs[updatedSongs.length - 1] ?? null,
         sketchURL: sketchURL ?? existing.sketchURL ?? null,
         tags: tags?.length ? tags : (existing.tags ?? []),
         photoURL: null,

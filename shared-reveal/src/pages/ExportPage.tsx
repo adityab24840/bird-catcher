@@ -3,6 +3,7 @@ import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firesto
 import { useNavigate } from 'react-router-dom'
 import { db } from '../firebase/config'
 import { useAuth } from '../hooks/useAuth'
+import BottomNav from '../components/BottomNav'
 import type { EntryDoc, SubmissionDoc, UserDoc } from '../types/index'
 
 interface ExportEntry {
@@ -263,11 +264,14 @@ export default function ExportPage() {
                             </p>
                           )}
 
-                          {sub.songURL && (
-                            <p style={{ fontSize: 12, color: '#2D5A3D' }}>
-                              🎵 {sub.songURL.replace('https://open.spotify.com/', 'spotify.com/')}
-                            </p>
-                          )}
+                          {(() => {
+                            const songs = sub.songURLs?.length ? sub.songURLs : sub.songURL ? [sub.songURL] : []
+                            return songs.map((url, i) => (
+                              <p key={i} style={{ fontSize: 12, color: '#2D5A3D' }}>
+                                🎵 {url.replace('https://open.spotify.com/', 'spotify.com/')}
+                              </p>
+                            ))
+                          })()}
 
                           {sub.location && (
                             <p style={{ fontSize: 12, color: '#7A7268' }}>
@@ -292,6 +296,7 @@ export default function ExportPage() {
           </>
         )}
       </div>
+      <div className="no-print"><BottomNav current="timeline" /></div>
     </>
   )
 }

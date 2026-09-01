@@ -79,6 +79,7 @@ export interface SubmissionDoc {
   text?: string | null
   audioURLs: string[]
   location?: { lat: number; lng: number } | null
+  songURLs?: string[]
   songURL?: string | null
   sketchURL?: string | null
   submittedAt: Timestamp

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ThemeToggle from '../components/ThemeToggle'
 import BookCover from '../components/BookCover'
+import BottomNav from '../components/BottomNav'
 import { doc, onSnapshot, collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../firebase/config'
@@ -195,7 +196,7 @@ function AudioPlayer({ url }: { url: string }) {
       </div>
       <span
         className="text-[10px] font-mono shrink-0 w-9 text-right tabular-nums"
-        style={{ color: '#7A7268' }}
+        style={{ color: 'var(--c-text-2)' }}
       >
         {duration > 0 ? `${mm}:${ss}` : ''}
       </span>
@@ -242,7 +243,7 @@ function CardMedia({
         <div className={`px-4 ${compact ? 'pt-3 pb-1' : 'pt-4 pb-1'}`}>
           {texts.map((t, i) => (
             <p key={i} className={`leading-relaxed mb-2 last:mb-0 ${compact ? 'text-[13px]' : 'text-[15px]'}`}
-              style={{ color: '#1A1A16' }}>{t}</p>
+              style={{ color: 'var(--c-text-1)' }}>{t}</p>
           ))}
         </div>
       )}
@@ -267,22 +268,25 @@ function CardMedia({
             <span className="text-[10px] font-medium" style={{ color: '#2D5A3D' }}>
               {sub.location.lat.toFixed(4)}, {sub.location.lng.toFixed(4)}
             </span>
-            <span className="text-[9px] ml-auto" style={{ color: '#C9BFA8' }}>open ↗</span>
+            <span className="text-[9px] ml-auto" style={{ color: 'var(--c-text-3)' }}>open ↗</span>
           </a>
         </div>
       )}
-      {!compact && sub.songURL && (
-        <div className="mt-3 mx-4 rounded-xl overflow-hidden">
-          <iframe
-            src={`https://open.spotify.com/embed/${sub.songURL.replace('https://open.spotify.com/', '')}?utm_source=generator`}
-            width="100%" height="80" frameBorder="0"
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy" style={{ display: 'block', borderRadius: 12 }} />
-        </div>
-      )}
+      {!compact && (() => {
+        const songs = sub.songURLs?.length ? sub.songURLs : sub.songURL ? [sub.songURL] : []
+        return songs.map((url, i) => (
+          <div key={i} className="mt-3 mx-4 rounded-xl overflow-hidden">
+            <iframe
+              src={`https://open.spotify.com/embed/${url.replace('https://open.spotify.com/', '')}?utm_source=generator`}
+              width="100%" height="80" frameBorder="0"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy" style={{ display: 'block', borderRadius: 12 }} />
+          </div>
+        ))
+      })()}
       {!compact && audios.map((url, i) => (
         <div key={i} className="mt-2 mx-4 rounded-xl overflow-hidden border" style={{ borderColor: '#E8E2D9' }}>
-          <p className="px-4 pt-2 text-[9px] tracking-[0.15em] uppercase font-semibold" style={{ color: '#C9BFA8' }}>
+          <p className="px-4 pt-2 text-[9px] tracking-[0.15em] uppercase font-semibold" style={{ color: 'var(--c-text-3)' }}>
             🎙 Voice memo
           </p>
           <AudioPlayer url={url} />
@@ -292,6 +296,8 @@ function CardMedia({
   )
 }
 
+const TEXT_COLLAPSE_LIMIT = 5
+
 /* ── Polaroid card — for entries with a photo ─────────────────────────────── */
 function PolaroidCard({
   sub, member, isFavorited, onToggleFavorite, onPhotoTap, tilt = 0, compact = false,
@@ -299,8 +305,10 @@ function PolaroidCard({
   sub: SubmissionDoc; member: UserDoc | undefined; isFavorited: boolean
   onToggleFavorite: () => void; onPhotoTap: (url: string) => void; tilt?: number; compact?: boolean
 }) {
+  const [textsExpanded, setTextsExpanded] = useState(false)
   const photos = sub.photoURLs?.length ? sub.photoURLs : sub.photoURL ? [sub.photoURL] : []
   const texts = sub.texts?.length ? sub.texts : sub.text ? [sub.text] : []
+  const visibleTexts = textsExpanded ? texts : texts.slice(0, TEXT_COLLAPSE_LIMIT)
   const ts = sub.updatedAt ?? sub.submittedAt
   const timeLabel = ts ? ts.toDate().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''
   const firstName = member?.displayName?.split(' ')[0] ?? '…'
@@ -339,9 +347,16 @@ function PolaroidCard({
         {/* Polaroid bottom */}
         <div className="px-5 pt-4 pb-3" style={{ background: 'var(--c-bg-surface)' }}>
           {texts.length > 0 && (
-            <p className="text-[14px] leading-snug mb-3" style={{ color: 'var(--c-text-1)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
-              {texts[0]}
-            </p>
+            <div className="mb-3">
+              {visibleTexts.map((t, i) => (
+                <p key={i} className="text-[14px] leading-snug mb-1.5 last:mb-0" style={{ color: 'var(--c-text-1)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>{t}</p>
+              ))}
+              {texts.length > TEXT_COLLAPSE_LIMIT && (
+                <button onClick={() => setTextsExpanded(v => !v)} className="text-[11px] mt-1" style={{ color: 'var(--c-green)' }}>
+                  {textsExpanded ? 'Show less' : `+ ${texts.length - TEXT_COLLAPSE_LIMIT} more`}
+                </button>
+              )}
+            </div>
           )}
           {sub.tags && sub.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-3">
@@ -379,15 +394,18 @@ function PolaroidCard({
             </a>
           </div>
         )}
-        {sub.songURL && (
-          <div className="px-4 pb-3" style={{ background: 'var(--c-bg-surface)' }}>
-            <iframe
-              src={`https://open.spotify.com/embed/${sub.songURL.replace('https://open.spotify.com/', '')}?utm_source=generator`}
-              width="100%" height="80" frameBorder="0"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy" style={{ display: 'block', borderRadius: 10 }} />
-          </div>
-        )}
+        {(() => {
+          const songs = sub.songURLs?.length ? sub.songURLs : sub.songURL ? [sub.songURL] : []
+          return songs.map((url, i) => (
+            <div key={i} className="px-4 pb-3" style={{ background: 'var(--c-bg-surface)' }}>
+              <iframe
+                src={`https://open.spotify.com/embed/${url.replace('https://open.spotify.com/', '')}?utm_source=generator`}
+                width="100%" height="80" frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy" style={{ display: 'block', borderRadius: 10 }} />
+            </div>
+          ))
+        })()}
         {(sub.audioURLs ?? []).map((url, i) => (
           <div key={i} className="border-t" style={{ borderColor: 'var(--c-border)', background: 'var(--c-bg-surface)' }}>
             <p className="px-4 pt-2 text-[9px] tracking-[0.15em] uppercase font-semibold" style={{ color: 'var(--c-text-3)' }}>🎙 Voice memo</p>
@@ -413,7 +431,9 @@ function JournalCard({
   sub: SubmissionDoc; member: UserDoc | undefined; isFavorited: boolean
   onToggleFavorite: () => void; onPhotoTap: (url: string) => void
 }) {
+  const [textsExpanded, setTextsExpanded] = useState(false)
   const texts = sub.texts?.length ? sub.texts : sub.text ? [sub.text] : []
+  const visibleTexts = textsExpanded ? texts : texts.slice(0, TEXT_COLLAPSE_LIMIT)
   const audios = sub.audioURLs ?? []
   const ts = sub.updatedAt ?? sub.submittedAt
   const timeLabel = ts ? ts.toDate().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''
@@ -446,23 +466,31 @@ function JournalCard({
         {texts.length === 0 && audios.length === 0 && !sub.sketchURL && (
           <p className="text-sm italic" style={{ color: 'var(--c-text-3)' }}>Nothing written</p>
         )}
-        {texts.map((t, i) => (
+        {visibleTexts.map((t, i) => (
           <p key={i} className="text-[15px] leading-[28px] mb-0" style={{ color: 'var(--c-text-1)', fontFamily: 'Georgia, serif' }}>{t}</p>
         ))}
+        {texts.length > TEXT_COLLAPSE_LIMIT && (
+          <button onClick={() => setTextsExpanded(v => !v)} className="text-[11px] mt-1.5 block" style={{ color: 'var(--c-green)' }}>
+            {textsExpanded ? 'Show less' : `+ ${texts.length - TEXT_COLLAPSE_LIMIT} more`}
+          </button>
+        )}
         {sub.sketchURL && (
           <img src={sub.sketchURL} alt="sketch" loading="lazy"
             className="w-full rounded-xl mt-3 cursor-pointer block"
             onClick={() => _onPhotoTap(sub.sketchURL!)} />
         )}
 
-        {sub.songURL && (
-          <div className="mt-3 rounded-xl overflow-hidden">
-            <iframe src={`https://open.spotify.com/embed/${sub.songURL.replace('https://open.spotify.com/', '')}?utm_source=generator`}
-              width="100%" height="80" frameBorder="0"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy" style={{ display: 'block', borderRadius: 12 }} />
-          </div>
-        )}
+        {(() => {
+          const songs = sub.songURLs?.length ? sub.songURLs : sub.songURL ? [sub.songURL] : []
+          return songs.map((url, i) => (
+            <div key={i} className="mt-3 rounded-xl overflow-hidden">
+              <iframe src={`https://open.spotify.com/embed/${url.replace('https://open.spotify.com/', '')}?utm_source=generator`}
+                width="100%" height="80" frameBorder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy" style={{ display: 'block', borderRadius: 12 }} />
+            </div>
+          ))
+        })()}
         {audios.map((url, i) => (
           <div key={i} className="mt-2 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--c-border)' }}>
             <p className="px-4 pt-2 text-[9px] tracking-[0.15em] uppercase font-semibold" style={{ color: 'var(--c-text-3)' }}>🎙 Voice memo</p>
@@ -532,7 +560,8 @@ function SubmissionCard({
   const texts = sub.texts?.length ? sub.texts : sub.text ? [sub.text] : []
   const audios = sub.audioURLs ?? []
   const hasVisualMedia = photos.length > 0 || !!sub.sketchURL
-  const hasContent = hasVisualMedia || texts.length > 0 || audios.length > 0 || !!sub.location || !!sub.songURL
+  const hasSong = (sub.songURLs?.length ?? 0) > 0 || !!sub.songURL
+  const hasContent = hasVisualMedia || texts.length > 0 || audios.length > 0 || !!sub.location || hasSong
 
   if (variant === 'polaroid' || (variant === 'default' && hasVisualMedia)) {
     return <PolaroidCard sub={sub} member={member} isFavorited={isFavorited} onToggleFavorite={onToggleFavorite} onPhotoTap={onPhotoTap} tilt={tilt} compact={compact} />
@@ -550,13 +579,13 @@ function SubmissionCard({
     <div className="relative bg-white rounded-2xl overflow-hidden animate-fadeIn"
       style={{ boxShadow: '0 2px 16px rgba(28,43,30,0.09)' }}>
       <CardMedia sub={sub} onPhotoTap={onPhotoTap} />
-      {!hasContent && <p className="px-4 py-4 text-sm italic" style={{ color: '#C9BFA8' }}>Nothing shared</p>}
+      {!hasContent && <p className="px-4 py-4 text-sm italic" style={{ color: 'var(--c-text-3)' }}>Nothing shared</p>}
       <div className="flex items-center gap-2.5 px-4 pt-3 pb-3.5 mt-1" style={{ borderTop: '1px solid #F0EBE0' }}>
         <Avatar photoURL={member?.photoURL ?? null} name={member?.displayName ?? null} />
         <div className="flex-1 min-w-0">
-          <span className="text-[13px] font-semibold" style={{ color: '#1A1A16' }}>{firstName}</span>
+          <span className="text-[13px] font-semibold" style={{ color: 'var(--c-text-1)' }}>{firstName}</span>
         </div>
-        {timeLabel && <span className="text-[11px] font-medium tabular-nums shrink-0" style={{ color: '#7A7268' }}>{timeLabel}{isUpdated && ' · edited'}</span>}
+        {timeLabel && <span className="text-[11px] font-medium tabular-nums shrink-0" style={{ color: 'var(--c-text-2)' }}>{timeLabel}{isUpdated && ' · edited'}</span>}
         {sub.mood && MOOD_EMOJIS[sub.mood] && <span className="text-base" title={sub.mood}>{MOOD_EMOJIS[sub.mood]}</span>}
       </div>
       <button onClick={onToggleFavorite}
@@ -598,6 +627,10 @@ function DaySection({
   const partnerUid = memberUids.find((u) => u !== currentUid) ?? null
   const partnerSubmitted = partnerUid ? (entry.submittedMembers?.includes(partnerUid) ?? false) : false
 
+  // Stable string key so the effect only re-runs when uid set actually changes,
+  // not on every parent re-render that produces a new Object.keys() reference.
+  const memberUidsKey = [...memberUids].sort().join(',')
+
   useEffect(() => {
     // Fall back to currentUid when memberDocs hasn't loaded yet (race on first render)
     const effectiveUids = memberUids.length ? memberUids : (currentUid ? [currentUid] : [])
@@ -629,7 +662,8 @@ function DaySection({
     )
 
     return () => unsubs.forEach((u) => u())
-  }, [pairId, entry.date, memberUids, isRevealed, currentUid])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pairId, entry.date, memberUidsKey, isRevealed, currentUid])
 
   const date = new Date(entry.date + 'T12:00:00')
   const isToday = entry.date === new Date().toLocaleDateString('en-CA')
@@ -725,7 +759,7 @@ function DaySection({
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5"
                     style={{ backdropFilter: 'blur(1px)' }}>
                     <span className="text-2xl">{revealing ? '…' : '🔒'}</span>
-                    <p className="text-xs font-semibold" style={{ color: '#1A1A16' }}>
+                    <p className="text-xs font-semibold" style={{ color: 'var(--c-text-1)' }}>
                       {revealing ? 'Revealing…' : `Tap to reveal ${partnerName}'s message`}
                     </p>
                   </div>
@@ -738,8 +772,8 @@ function DaySection({
                 <div className="rounded-xl px-4 py-6 flex flex-col items-center gap-1.5 border border-dashed"
                   style={{ borderColor: '#C9BFA8' }}>
                   <span className="text-2xl">⏳</span>
-                  <p className="text-sm font-medium" style={{ color: '#7A7268' }}>Waiting for {partnerName}…</p>
-                  <p className="text-xs" style={{ color: '#C9BFA8' }}>Their tile appears once they share</p>
+                  <p className="text-sm font-medium" style={{ color: 'var(--c-text-2)' }}>Waiting for {partnerName}…</p>
+                  <p className="text-xs" style={{ color: 'var(--c-text-3)' }}>Their tile appears once they share</p>
                 </div>
               )
             }
@@ -761,7 +795,7 @@ function DaySection({
                       setDeletionWorking(false)
                     }}
                     className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
-                    style={{ color: '#C9BFA8', border: '1px solid #E8E2D9' }}
+                    style={{ color: 'var(--c-text-3)', border: '1px solid var(--c-border)' }}
                   >
                     🗑 Delete
                   </button>
@@ -772,7 +806,7 @@ function DaySection({
               return (
                 <div className="rounded-xl px-3 py-2.5 text-xs flex items-center gap-2"
                   style={{ background: '#FAF0EB', border: '1px solid #E8D5C8' }}>
-                  <span style={{ color: '#7A7268' }}>Waiting for partner to approve deletion…</span>
+                  <span style={{ color: 'var(--c-text-2)' }}>Waiting for partner to approve deletion…</span>
                   <button
                     disabled={deletionWorking}
                     onClick={async () => {
@@ -806,7 +840,7 @@ function DaySection({
                       setDeletionWorking(false)
                     }}
                     className="flex-1 rounded-lg py-1.5 text-xs font-medium disabled:opacity-40"
-                    style={{ border: '1px solid #C9BFA8', color: '#7A7268' }}
+                    style={{ border: '1px solid var(--c-border-mid)', color: 'var(--c-text-2)' }}
                   >
                     Decline
                   </button>
@@ -862,7 +896,7 @@ function DaySection({
                   <span
                     key={uid}
                     className="ml-auto text-base flex items-center gap-1"
-                    style={{ color: '#7A7268' }}
+                    style={{ color: 'var(--c-text-2)' }}
                   >
                     <span>{memberDocs[uid]?.displayName?.split(' ')[0] ?? '…'}</span>
                     <span>{emoji}</span>
@@ -928,13 +962,13 @@ function CalendarView({
             setCalMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))
           }
           className="px-3 py-1.5 text-lg leading-none"
-          style={{ color: '#7A7268' }}
+          style={{ color: 'var(--c-text-2)' }}
         >
           ‹
         </button>
         <p
           className="text-xs tracking-[0.2em] uppercase font-semibold"
-          style={{ color: '#1A1A16' }}
+          style={{ color: 'var(--c-text-1)' }}
         >
           {monthLabel}
         </p>
@@ -943,7 +977,7 @@ function CalendarView({
             setCalMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))
           }
           className="px-3 py-1.5 text-lg leading-none"
-          style={{ color: '#7A7268' }}
+          style={{ color: 'var(--c-text-2)' }}
         >
           ›
         </button>
@@ -955,7 +989,7 @@ function CalendarView({
           <div
             key={i}
             className="text-center text-[10px] tracking-widest uppercase py-1"
-            style={{ color: '#7A7268' }}
+            style={{ color: 'var(--c-text-2)' }}
           >
             {d}
           </div>
@@ -1015,7 +1049,7 @@ function CalendarView({
             <div className="flex-1 h-px" style={{ background: '#C9BFA8' }} />
             <span
               className="text-[10px] tracking-[0.2em] uppercase text-center font-semibold shrink-0"
-              style={{ color: '#7A7268' }}
+              style={{ color: 'var(--c-text-2)' }}
             >
               {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', {
                 weekday: 'long',
@@ -1151,7 +1185,7 @@ export default function TimelinePage() {
           <button
             onClick={() => navigate('/home')}
             className="transition-colors"
-            style={{ color: '#7A7268' }}
+            style={{ color: 'var(--c-text-2)' }}
             aria-label="Back"
           >
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
@@ -1166,7 +1200,7 @@ export default function TimelinePage() {
           </button>
           <p
             className="text-xs tracking-[0.3em] font-bold uppercase"
-            style={{ color: '#1A1A16' }}
+            style={{ color: 'var(--c-text-1)' }}
           >
             Timeline
           </p>
@@ -1174,6 +1208,19 @@ export default function TimelinePage() {
 
         <div className="flex items-center gap-1.5">
           <ThemeToggle />
+
+          {/* Export */}
+          <button
+            onClick={() => navigate('/export')}
+            className="flex items-center justify-center rounded-xl p-2 border transition-all"
+            style={{ background: 'transparent', borderColor: 'var(--c-border-mid)' }}
+            title="Export journal"
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+              <path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="var(--c-text-1)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M5 20h14" stroke="var(--c-text-1)" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
 
           {/* Search toggle */}
           <button
@@ -1303,7 +1350,7 @@ export default function TimelinePage() {
       )}
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto pb-6">
+      <main className="flex-1 overflow-y-auto pb-24">
         {pulling && (
           <div
             className="flex justify-center py-2 transition-all"
@@ -1338,8 +1385,8 @@ export default function TimelinePage() {
               <ellipse cx="40" cy="20" rx="5" ry="2" transform="rotate(20 40 20)" fill="#2D5A3D" opacity="0.25"/>
             </svg>
             <div>
-              <p className="font-semibold text-sm" style={{ color: '#1A1A16' }}>Your journal is growing</p>
-              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: '#7A7268' }}>
+              <p className="font-semibold text-sm" style={{ color: 'var(--c-text-1)' }}>Your journal is growing</p>
+              <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--c-text-2)' }}>
                 Entries appear here once<br/>both of you share something
               </p>
             </div>
@@ -1364,7 +1411,7 @@ export default function TimelinePage() {
           <div className="px-4 pt-2 pb-8">
             {/* No results after filtering */}
             {filteredEntries.length === 0 && (filterFavs || filterMonth) && (
-              <p className="text-center text-sm pt-12" style={{ color: '#C9BFA8' }}>
+              <p className="text-center text-sm pt-12" style={{ color: 'var(--c-text-3)' }}>
                 No entries match this filter
               </p>
             )}
@@ -1391,7 +1438,7 @@ export default function TimelinePage() {
                 <button
                   onClick={() => setSummaryDismissed(true)}
                   className="text-sm shrink-0 mt-0.5"
-                  style={{ color: '#7A7268' }}
+                  style={{ color: 'var(--c-text-2)' }}
                 >
                   ×
                 </button>
@@ -1406,10 +1453,10 @@ export default function TimelinePage() {
               >
                 <span style={{ fontSize: 20 }}>🕰</span>
                 <div>
-                  <p className="text-[10px] tracking-[0.2em] uppercase font-semibold" style={{ color: '#7A7268' }}>
+                  <p className="text-[10px] tracking-[0.2em] uppercase font-semibold" style={{ color: 'var(--c-text-2)' }}>
                     On this day · {new Date(onThisDay.date + 'T12:00:00').getFullYear()}
                   </p>
-                  <p className="text-sm mt-0.5" style={{ color: '#1A1A16' }}>
+                  <p className="text-sm mt-0.5" style={{ color: 'var(--c-text-1)' }}>
                     You both shared something{onThisDay.favoritedBy?.length ? ' ❤️' : ''} — scroll down to see it
                   </p>
                 </div>
@@ -1431,8 +1478,8 @@ export default function TimelinePage() {
               >
                 <span className="text-xl">🎲</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] tracking-[0.18em] uppercase font-semibold" style={{ color: '#7A7268' }}>Remember this?</p>
-                  <p className="text-sm mt-0.5 font-medium truncate" style={{ color: '#1A1A16' }}>
+                  <p className="text-[10px] tracking-[0.18em] uppercase font-semibold" style={{ color: 'var(--c-text-2)' }}>Remember this?</p>
+                  <p className="text-sm mt-0.5 font-medium truncate" style={{ color: 'var(--c-text-1)' }}>
                     {new Date(flashbackEntry.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                   </p>
                 </div>
@@ -1466,7 +1513,7 @@ export default function TimelinePage() {
                       {showMonthHeader && (
                         <div className="flex items-center gap-3 mb-5 mt-2 pl-6">
                           <div className="flex-1 h-px" style={{ background: '#E8E2D9' }} />
-                          <span className="text-[9px] tracking-[0.25em] font-bold shrink-0" style={{ color: '#C9BFA8' }}>
+                          <span className="text-[9px] tracking-[0.25em] font-bold shrink-0" style={{ color: 'var(--c-text-3)' }}>
                             {monthLabel}
                           </span>
                           <div className="flex-1 h-px" style={{ background: '#E8E2D9' }} />
@@ -1491,56 +1538,7 @@ export default function TimelinePage() {
         )}
       </main>
 
-      {/* Bottom nav */}
-      <nav
-        className="shrink-0 flex"
-        style={{ background: '#1C2B1E', paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
-      >
-        <button
-          onClick={() => navigate('/home')}
-          className="flex-1 flex flex-col items-center pt-3 pb-1 gap-1"
-          style={{ color: '#4A5C4A' }}
-        >
-          <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-            <path d="M3 12L12 3l9 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M5 10v9a1 1 0 001 1h4v-4h4v4h4a1 1 0 001-1v-9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Today</span>
-        </button>
-        <button
-          onClick={() => navigate('/timeline')}
-          className="flex-1 flex flex-col items-center pt-3 pb-1 gap-1"
-          style={{ color: '#8FAF8A' }}
-        >
-          <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-            <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" />
-            <path d="M3 9h18" stroke="currentColor" strokeWidth="1.8" />
-            <path d="M8 2v4M16 2v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-          <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Timeline</span>
-        </button>
-        <button
-          onClick={() => navigate('/stats')}
-          className="flex-1 flex flex-col items-center pt-3 pb-1 gap-1"
-          style={{ color: '#4A5C4A' }}
-        >
-          <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-            <path d="M4 20V14M8 20V10M12 20V6M16 20V12M20 20V8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-          <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Stats</span>
-        </button>
-        <button
-          onClick={() => navigate('/export')}
-          className="flex-1 flex flex-col items-center pt-3 pb-1 gap-1"
-          style={{ color: '#4A5C4A' }}
-        >
-          <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-            <path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M5 20h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-          <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Export</span>
-        </button>
-      </nav>
+      <BottomNav current="timeline" />
 
       {lightbox && <PhotoLightbox url={lightbox} onClose={() => setLightbox(null)} />}
     </div>
