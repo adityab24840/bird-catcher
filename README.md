@@ -12,6 +12,14 @@ The app is private by design: no public profiles, no followers, no discovery. Ju
 
 ---
 
+## Preview
+
+![birds.eye app walkthrough](docs/app-preview.gif)
+
+*Landing → onboarding → submit → waiting → reveal → timeline (polaroid + journal + masonry) → dark mode → stats*
+
+---
+
 ## Screenshots
 
 <table>
