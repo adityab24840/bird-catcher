@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { doc, onSnapshot, serverTimestamp, collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../firebase/config'
@@ -34,24 +34,169 @@ function Avatar({ photoURL, name }: { photoURL: string | null; name: string | nu
 }
 
 function PhotoLightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  const [scale, setScale] = useState(1)
+  const lastTouchDistRef = useRef<number | null>(null)
+
+  function getTouchDist(e: React.TouchEvent) {
+    const t1 = e.touches[0], t2 = e.touches[1]
+    return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY)
+  }
+
+  function onTouchStart(e: React.TouchEvent) {
+    if (e.touches.length === 2) lastTouchDistRef.current = getTouchDist(e)
+  }
+
+  function onTouchMove(e: React.TouchEvent) {
+    if (e.touches.length === 2 && lastTouchDistRef.current != null) {
+      const dist = getTouchDist(e)
+      const delta = dist / lastTouchDistRef.current
+      setScale((s) => Math.max(1, Math.min(5, s * delta)))
+      lastTouchDistRef.current = dist
+    }
+  }
+
+  function onTouchEnd() {
+    lastTouchDistRef.current = null
+    setScale((s) => (s < 1.15 ? 1 : s))
+  }
+
+  function handleWheel(e: React.WheelEvent) {
+    e.stopPropagation()
+    setScale((s) => Math.max(1, Math.min(5, s - e.deltaY * 0.003)))
+  }
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center animate-fadeIn overflow-hidden"
       style={{ background: 'rgba(0,0,0,0.92)' }}
-      onClick={onClose}
+      onClick={() => scale === 1 && onClose()}
     >
       <img
         src={url}
         alt=""
         className="max-w-full max-h-full object-contain select-none"
-        style={{ maxHeight: '92dvh', maxWidth: '96vw' }}
+        style={{
+          maxHeight: '92dvh',
+          maxWidth: '96vw',
+          transform: `scale(${scale})`,
+          transition: scale === 1 ? 'transform 0.2s ease' : 'none',
+          touchAction: 'none',
+        }}
         onClick={(e) => e.stopPropagation()}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onWheel={handleWheel}
       />
       <button
         className="absolute top-5 right-5 h-9 w-9 rounded-full flex items-center justify-center text-xl text-white"
         style={{ background: 'rgba(255,255,255,0.15)' }}
         onClick={onClose}
       >×</button>
+      {scale > 1 && (
+        <button
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-xs text-white"
+          style={{ background: 'rgba(255,255,255,0.15)' }}
+          onClick={() => setScale(1)}
+        >
+          Reset zoom
+        </button>
+      )}
+    </div>
+  )
+}
+
+function AudioPlayer({ url }: { url: string }) {
+  const [playing, setPlaying] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const audioRef = useRef<HTMLAudioElement>(null)
+
+  const bars = useMemo(() => {
+    let h = 0
+    for (let i = 0; i < url.length; i++) h = ((h << 5) - h + url.charCodeAt(i)) | 0
+    return Array.from({ length: 36 }, (_, i) => {
+      h = ((h << 5) - h + (i + 1) * 2654435761) | 0
+      return 18 + (Math.abs(h) % 72)
+    })
+  }, [url])
+
+  function toggle() {
+    const a = audioRef.current
+    if (!a) return
+    if (playing) { a.pause(); setPlaying(false) }
+    else { a.play().catch(() => {}); setPlaying(true) }
+  }
+
+  function onTimeUpdate() {
+    const a = audioRef.current
+    if (!a || !a.duration) return
+    setProgress(a.currentTime / a.duration)
+  }
+
+  function onEnded() { setPlaying(false); setProgress(0) }
+
+  const playedBars = Math.round(progress * bars.length)
+  const remaining = duration > 0 ? duration * (1 - progress) : 0
+  const mm = String(Math.floor(remaining / 60)).padStart(2, '0')
+  const ss = String(Math.round(remaining) % 60).padStart(2, '0')
+
+  function seekTo(e: React.MouseEvent<HTMLDivElement>) {
+    const a = audioRef.current
+    if (!a || !a.duration) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const ratio = (e.clientX - rect.left) / rect.width
+    a.currentTime = ratio * a.duration
+    setProgress(ratio)
+  }
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <audio
+        ref={audioRef}
+        src={url}
+        onTimeUpdate={onTimeUpdate}
+        onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
+        onEnded={onEnded}
+      />
+      <button
+        onClick={toggle}
+        className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-90"
+        style={{ background: '#2D5A3D' }}
+      >
+        {playing ? (
+          <svg width="12" height="14" viewBox="0 0 12 14" fill="white">
+            <rect x="0" y="0" width="4" height="14" rx="1"/>
+            <rect x="8" y="0" width="4" height="14" rx="1"/>
+          </svg>
+        ) : (
+          <svg width="12" height="14" viewBox="0 0 12 14" fill="white">
+            <path d="M2 1.5L10.5 7 2 12.5V1.5z"/>
+          </svg>
+        )}
+      </button>
+      <div
+        className="flex-1 flex items-end gap-[2px] h-8 cursor-pointer"
+        onClick={seekTo}
+        role="progressbar"
+      >
+        {bars.map((h, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-sm transition-colors duration-75"
+            style={{
+              height: `${h}%`,
+              background: i < playedBars ? '#2D5A3D' : '#E8E2D9',
+            }}
+          />
+        ))}
+      </div>
+      <span
+        className="text-[10px] font-mono shrink-0 w-9 text-right tabular-nums"
+        style={{ color: '#7A7268' }}
+      >
+        {duration > 0 ? `${mm}:${ss}` : ''}
+      </span>
     </div>
   )
 }
@@ -188,11 +333,11 @@ function SubmissionCard({
 
       {/* Audio memos */}
       {audios.map((url, i) => (
-        <div key={i} className="px-4 py-3 border-b last:border-0" style={{ borderColor: '#F0EBE0' }}>
-          <p className="text-[10px] tracking-[0.12em] uppercase mb-1.5" style={{ color: '#C9BFA8' }}>
+        <div key={i} className="border-b last:border-0" style={{ borderColor: '#F0EBE0' }}>
+          <p className="px-4 pt-3 text-[10px] tracking-[0.12em] uppercase" style={{ color: '#C9BFA8' }}>
             🎙️ voice memo
           </p>
-          <audio src={url} controls className="w-full h-8" style={{ colorScheme: 'light' }} />
+          <AudioPlayer url={url} />
         </div>
       ))}
 
@@ -663,7 +808,7 @@ export default function TimelinePage() {
   }, [pairId])
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen animate-pageIn">
       {/* Header */}
       <header
         className="flex items-center justify-between px-5 pt-12 pb-4 shrink-0"

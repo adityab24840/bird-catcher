@@ -575,6 +575,8 @@ export default function HomePage() {
   const [editingPairName, setEditingPairName] = useState(false)
   const [pairNameText, setPairNameText] = useState('')
   const [savingPairName, setSavingPairName] = useState(false)
+  const [showCelebration, setShowCelebration] = useState(false)
+  const prevEntryStatusRef = useRef<string | null | undefined>(undefined)
 
   const { supported: notifSupported, permission: notifPermission, requestPermission } =
     useNotifications(user?.uid ?? null)
@@ -637,6 +639,17 @@ export default function HomePage() {
   }, [])
 
   const { entryDoc, entryLoading } = useEntry(userDoc?.pairId ?? null, entryDate)
+
+  useEffect(() => {
+    const prev = prevEntryStatusRef.current
+    const curr = entryDoc?.status
+    if (prev === 'one_submitted' && curr === 'revealed') {
+      setShowCelebration(true)
+      haptic([40, 30, 40, 30, 60])
+      setTimeout(() => setShowCelebration(false), 3200)
+    }
+    prevEntryStatusRef.current = curr
+  }, [entryDoc?.status])
 
   const { myStreak, partnerStreak } = useStreak(
     userDoc?.pairId ?? null,
@@ -768,8 +781,49 @@ export default function HomePage() {
     setShowResubmitForm(false)
   }
 
+  const CONFETTI_PIECES = [
+    { left: 5, delay: 0, color: '#2D5A3D', size: 8 },
+    { left: 12, delay: 0.12, color: '#8FAF8A', size: 10 },
+    { left: 22, delay: 0.06, color: '#B85C38', size: 7 },
+    { left: 31, delay: 0.22, color: '#C9BFA8', size: 9 },
+    { left: 40, delay: 0.04, color: '#2D5A3D', size: 11 },
+    { left: 48, delay: 0.18, color: '#E8C4B0', size: 7 },
+    { left: 57, delay: 0.08, color: '#3D7A53', size: 10 },
+    { left: 65, delay: 0.28, color: '#8FAF8A', size: 8 },
+    { left: 74, delay: 0.14, color: '#B85C38', size: 9 },
+    { left: 82, delay: 0.02, color: '#2D5A3D', size: 7 },
+    { left: 90, delay: 0.2, color: '#C9BFA8', size: 11 },
+    { left: 96, delay: 0.1, color: '#3D7A53', size: 8 },
+    { left: 8, delay: 0.32, color: '#E8C4B0', size: 9 },
+    { left: 18, delay: 0.16, color: '#2D5A3D', size: 10 },
+    { left: 35, delay: 0.24, color: '#8FAF8A', size: 7 },
+    { left: 52, delay: 0.36, color: '#B85C38', size: 8 },
+    { left: 68, delay: 0.08, color: '#C9BFA8', size: 10 },
+    { left: 78, delay: 0.3, color: '#3D7A53', size: 9 },
+    { left: 86, delay: 0.04, color: '#2D5A3D', size: 7 },
+    { left: 44, delay: 0.42, color: '#8FAF8A', size: 11 },
+  ]
+
   return (
     <div className="flex flex-col min-h-screen animate-fadeUp">
+      {showCelebration && (
+        <div className="fixed inset-0 pointer-events-none z-40 overflow-hidden">
+          {CONFETTI_PIECES.map((p, i) => (
+            <div
+              key={i}
+              className="confetti-piece"
+              style={{
+                left: `${p.left}%`,
+                top: '-10px',
+                width: p.size,
+                height: p.size + 2,
+                background: p.color,
+                animationDelay: `${p.delay}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
       {/* Header */}
       <header
         className="px-5 pt-12 pb-4 flex items-start justify-between shrink-0"

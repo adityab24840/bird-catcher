@@ -34,8 +34,8 @@ export default function App() {
   // pairLoading is only relevant when signed in (usePairId returns false immediately for null uid).
   if (loading || (user && pairLoading)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-purple-500 border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" style={{ borderColor: '#E8E2D9', borderTopColor: '#2D5A3D' }} />
       </div>
     )
   }

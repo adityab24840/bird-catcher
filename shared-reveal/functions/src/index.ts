@@ -135,14 +135,6 @@ export const createPair = onCall(callableOptions, async (request) => {
     if (userSnap.data()!.pairId !== null) {
       throw new HttpsError('already-exists', 'You are already in a pair')
     }
-    const lastDissolved = userSnap.data()!.lastDissolvedAt as Timestamp | null
-    if (lastDissolved) {
-      const hoursSince = (Date.now() - lastDissolved.toMillis()) / 3_600_000
-      if (hoursSince < 24) {
-        throw new HttpsError('failed-precondition', 'Wait 24 hours before starting a new pair')
-      }
-    }
-
     tx.set(pairRef, {
       createdBy: uid,
       members: [uid],
@@ -222,14 +214,6 @@ export const joinPair = onCall(callableOptions, async (request) => {
     if (joinerSnap.data()!.pairId !== null) {
       throw new HttpsError('already-exists', 'You are already in a pair')
     }
-    const joinerLastDissolved = joinerSnap.data()!.lastDissolvedAt as Timestamp | null
-    if (joinerLastDissolved) {
-      const hoursSince = (Date.now() - joinerLastDissolved.toMillis()) / 3_600_000
-      if (hoursSince < 24) {
-        throw new HttpsError('failed-precondition', 'Wait 24 hours before joining a new pair')
-      }
-    }
-
     // ALL WRITES — all conditions passed
     const creatorRef = db.doc(`users/${pair.createdBy}`)
 
