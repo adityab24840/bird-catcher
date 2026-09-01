@@ -223,7 +223,6 @@ function CardMedia({
         <img
           src={photos[0]}
           alt=""
-          loading="lazy"
           onClick={() => onPhotoTap(photos[0])}
           className="cursor-pointer w-full object-cover block active:opacity-90 transition-opacity"
           style={{ height: compact ? 160 : 220 }}
@@ -319,7 +318,6 @@ function PolaroidCard({
         {/* Photo(s) — full aspect ratio in single-col, fixed crop in 2-col */}
         {photos[0] && (
           <img src={photos[0]} alt="" onClick={() => onPhotoTap(photos[0])}
-            loading="lazy"
             className="cursor-pointer w-full block active:opacity-90 transition-opacity"
             style={compact
               ? { height: 160, objectFit: 'cover', display: 'block' }

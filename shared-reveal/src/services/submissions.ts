@@ -89,9 +89,11 @@ export async function uploadSubmissionAudio(
   uid: string,
   blob: Blob
 ): Promise<string> {
-  const storagePath = `pairs/${pairId}/entries/${entryDate}/${uid}/${Date.now()}_audio.webm`
+  const contentType = blob.type || 'audio/webm'
+  const ext = contentType.includes('mp4') ? 'mp4' : contentType.includes('ogg') ? 'ogg' : 'webm'
+  const storagePath = `pairs/${pairId}/entries/${entryDate}/${uid}/${Date.now()}_audio.${ext}`
   const storageRef = ref(storage, storagePath)
-  const snapshot = await uploadBytes(storageRef, blob, { contentType: 'audio/webm' })
+  const snapshot = await uploadBytes(storageRef, blob, { contentType })
   return getDownloadURL(snapshot.ref)
 }
 
