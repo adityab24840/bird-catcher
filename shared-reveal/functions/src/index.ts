@@ -84,8 +84,8 @@ const JoinPairSchema = z.object({
 const SubmitEntrySchema = z
   .object({
     entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    text: z.string().max(500).nullable(),
-    photoURL: z.url().nullable(),
+    text: z.string().max(500).nullable().optional(),
+    photoURL: z.url().nullable().optional(),
     audioURL: z.url().nullable().optional(),
     mood: z.string().max(20).nullable().optional(),
     location: z.object({ lat: z.number(), lng: z.number() }).nullable().optional(),
@@ -246,6 +246,7 @@ export const submitEntry = onCall(callableOptions, async (request) => {
 
   const parsed = SubmitEntrySchema.safeParse(request.data)
   if (!parsed.success) {
+    console.error('[submitEntry] validation errors:', JSON.stringify(parsed.error.issues))
     throw new HttpsError('invalid-argument', 'Invalid submission data')
   }
 
