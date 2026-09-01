@@ -676,36 +676,19 @@ function DaySection({
       ) : (
         <div className="pl-6">
           {/* Masonry 2-col when both revealed; stacked otherwise */}
-          {isRevealed && submissions.length === 2 ? (
-            <div className="grid grid-cols-2 gap-3 mb-5">
-              {submissions.map((sub, idx) => (
-                <SubmissionCard
-                  key={sub.uid}
-                  sub={sub}
-                  member={memberDocs[sub.uid]}
-                  isFavorited={favKeys.has(`${entry.date}/${sub.uid}`)}
-                  onToggleFavorite={() => onToggleFav(entry.date, sub.uid)}
-                  onPhotoTap={onPhotoTap}
-                  tilt={idx === 0 ? 1.2 : -0.8}
-                  compact
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-5 mb-5">
-              {submissions.map((sub, idx) => (
-                <SubmissionCard
-                  key={sub.uid}
-                  sub={sub}
-                  member={memberDocs[sub.uid]}
-                  isFavorited={favKeys.has(`${entry.date}/${sub.uid}`)}
-                  onToggleFavorite={() => onToggleFav(entry.date, sub.uid)}
-                  onPhotoTap={onPhotoTap}
-                  tilt={idx === 0 ? 1.2 : -0.8}
-                />
-              ))}
-            </div>
-          )}
+          <div className="space-y-5 mb-5">
+            {submissions.map((sub, idx) => (
+              <SubmissionCard
+                key={sub.uid}
+                sub={sub}
+                member={memberDocs[sub.uid]}
+                isFavorited={favKeys.has(`${entry.date}/${sub.uid}`)}
+                onToggleFavorite={() => onToggleFav(entry.date, sub.uid)}
+                onPhotoTap={onPhotoTap}
+                tilt={idx === 0 ? 1.2 : -0.8}
+              />
+            ))}
+          </div>
 
           {/* one_submitted: partner's blurred placeholder + reveal/waiting states */}
           {!isRevealed && (() => {
