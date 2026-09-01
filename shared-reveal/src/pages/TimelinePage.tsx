@@ -223,20 +223,21 @@ function CardMedia({
         <img
           src={photos[0]}
           alt=""
+          loading="lazy"
           onClick={() => onPhotoTap(photos[0])}
           className="cursor-pointer w-full object-cover block active:opacity-90 transition-opacity"
           style={{ height: compact ? 160 : 220 }}
         />
       )}
       {!compact && photos.slice(1).map((url, i) => (
-        <img key={i} src={url} alt="" onClick={() => onPhotoTap(url)}
+        <img key={i} src={url} alt="" loading="lazy" onClick={() => onPhotoTap(url)}
           className="cursor-pointer w-full object-cover block active:opacity-90 border-t"
-          style={{ height: 180, borderColor: '#F0EBE0' }} />
+          style={{ height: 180, borderColor: 'var(--c-border)' }} />
       ))}
       {sub.sketchURL && (
-        <img src={sub.sketchURL} alt="sketch" onClick={() => onPhotoTap(sub.sketchURL!)}
+        <img src={sub.sketchURL} alt="sketch" loading="lazy" onClick={() => onPhotoTap(sub.sketchURL!)}
           className="w-full block border-t cursor-pointer active:opacity-80 transition-opacity"
-          style={{ borderColor: '#F0EBE0' }} />
+          style={{ borderColor: 'var(--c-border)' }} />
       )}
       {texts.length > 0 && (
         <div className={`px-4 ${compact ? 'pt-3 pb-1' : 'pt-4 pb-1'}`}>
@@ -315,15 +316,20 @@ function PolaroidCard({
       }}
     >
       <div className="relative overflow-hidden" style={{ borderRadius: 4, background: 'var(--c-bg-card)' }}>
-        {/* Photo */}
-        {photos[0] ? (
+        {/* Photo(s) */}
+        {photos[0] && (
           <img src={photos[0]} alt="" onClick={() => onPhotoTap(photos[0])}
+            loading="lazy"
             className="cursor-pointer w-full object-cover block active:opacity-90 transition-opacity"
             style={{ height: 240 }} />
-        ) : sub.sketchURL ? (
+        )}
+        {/* Sketch — shown below photo if both exist */}
+        {sub.sketchURL && (
           <img src={sub.sketchURL} alt="sketch" onClick={() => onPhotoTap(sub.sketchURL!)}
-            className="w-full block cursor-pointer" style={{ height: 200 }} />
-        ) : null}
+            loading="lazy"
+            className="w-full block cursor-pointer"
+            style={{ height: 200, borderTop: photos[0] ? '1px solid var(--c-border)' : undefined }} />
+        )}
 
         {/* Polaroid bottom */}
         <div className="px-5 pt-4 pb-3" style={{ background: 'var(--c-bg-surface)' }}>
@@ -432,12 +438,17 @@ function JournalCard({
           <span className="text-[10px]" style={{ color: 'var(--c-text-3)', fontFamily: 'Georgia, serif' }}>{timeLabel}</span>
         </div>
 
-        {texts.length === 0 && audios.length === 0 && (
+        {texts.length === 0 && audios.length === 0 && !sub.sketchURL && (
           <p className="text-sm italic" style={{ color: 'var(--c-text-3)' }}>Nothing written</p>
         )}
         {texts.map((t, i) => (
           <p key={i} className="text-[15px] leading-[28px] mb-0" style={{ color: 'var(--c-text-1)', fontFamily: 'Georgia, serif' }}>{t}</p>
         ))}
+        {sub.sketchURL && (
+          <img src={sub.sketchURL} alt="sketch" loading="lazy"
+            className="w-full rounded-xl mt-3 cursor-pointer block"
+            onClick={() => _onPhotoTap(sub.sketchURL!)} />
+        )}
 
         {sub.songURL && (
           <div className="mt-3 rounded-xl overflow-hidden">
