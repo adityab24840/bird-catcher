@@ -846,7 +846,7 @@ export default function HomePage() {
   ]
 
   return (
-    <div className="flex flex-col min-h-screen animate-fadeUp">
+    <div className="flex flex-col h-screen overflow-hidden animate-fadeUp">
       {showCelebration && (
         <div className="fixed inset-0 pointer-events-none z-40 overflow-hidden">
           {CONFETTI_PIECES.map((p, i) => (
@@ -883,8 +883,8 @@ export default function HomePage() {
             </p>
           )}
           {daysTogether !== null && (
-            <p className="text-[10px] tracking-[0.12em] mt-0.5 uppercase" style={{ color: 'var(--c-text-3)' }}>
-              Day {daysTogether}{revealedStreak >= 2 ? ` · 🔥 ${revealedStreak}` : ' · building this'}
+            <p className="text-[10px] tracking-[0.12em] mt-0.5 uppercase" style={{ color: 'var(--c-green-mid)' }}>
+              Day {daysTogether}{revealedStreak >= 2 ? ` · 🔥 ${revealedStreak}` : ' · building this 🌱'}
             </p>
           )}
         </div>
@@ -1520,8 +1520,8 @@ export default function HomePage() {
 
       {/* Bottom nav */}
       <nav
-        className="shrink-0 flex pb-8"
-        style={{ background: '#1C2B1E' }}
+        className="shrink-0 flex"
+        style={{ background: '#1C2B1E', paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
       >
         <button
           onClick={() => navigate('/home')}
@@ -1529,20 +1529,8 @@ export default function HomePage() {
           style={{ color: '#8FAF8A' }}
         >
           <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-            <path
-              d="M3 12L12 3l9 9"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M5 10v9a1 1 0 001 1h4v-4h4v4h4a1 1 0 001-1v-9"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d="M3 12L12 3l9 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M5 10v9a1 1 0 001 1h4v-4h4v4h4a1 1 0 001-1v-9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Today</span>
         </button>
@@ -1557,6 +1545,27 @@ export default function HomePage() {
             <path d="M8 2v4M16 2v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
           <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Timeline</span>
+        </button>
+        <button
+          onClick={() => navigate('/stats')}
+          className="flex-1 flex flex-col items-center pt-3 pb-1 gap-1"
+          style={{ color: '#4A5C4A' }}
+        >
+          <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
+            <path d="M4 20V14M8 20V10M12 20V6M16 20V12M20 20V8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Stats</span>
+        </button>
+        <button
+          onClick={() => navigate('/export')}
+          className="flex-1 flex flex-col items-center pt-3 pb-1 gap-1"
+          style={{ color: '#4A5C4A' }}
+        >
+          <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
+            <path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M5 20h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Export</span>
         </button>
       </nav>
 

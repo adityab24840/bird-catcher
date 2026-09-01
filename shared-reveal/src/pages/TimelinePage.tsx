@@ -326,7 +326,7 @@ function PolaroidCard({
         ) : null}
 
         {/* Polaroid bottom */}
-        <div className="px-5 pt-4 pb-5" style={{ background: 'var(--c-bg-surface)' }}>
+        <div className="px-5 pt-4 pb-3" style={{ background: 'var(--c-bg-surface)' }}>
           {texts.length > 0 && (
             <p className="text-[14px] leading-snug mb-3" style={{ color: 'var(--c-text-1)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
               {texts[0]}
@@ -340,7 +340,7 @@ function PolaroidCard({
               ))}
             </div>
           )}
-          <div className="flex items-center justify-between mt-1">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Avatar photoURL={member?.photoURL ?? null} name={member?.displayName ?? null} />
               <span className="text-[12px] font-semibold" style={{ color: 'var(--c-text-1)' }}>{firstName}</span>
@@ -349,6 +349,40 @@ function PolaroidCard({
             <span className="text-[10px] tabular-nums" style={{ color: 'var(--c-text-3)', fontFamily: 'Georgia, serif' }}>{timeLabel}</span>
           </div>
         </div>
+
+        {/* Extra media: location, song, voice memos */}
+        {sub.location && (
+          <div style={{ borderTop: '1px solid var(--c-border)' }}>
+            <iframe title="location map"
+              src={`https://www.openstreetmap.org/export/embed.html?bbox=${sub.location.lng - 0.012},${sub.location.lat - 0.008},${sub.location.lng + 0.012},${sub.location.lat + 0.008}&layer=mapnik&marker=${sub.location.lat},${sub.location.lng}`}
+              width="100%" height="140" loading="lazy"
+              style={{ display: 'block', border: 'none', pointerEvents: 'none' }} />
+            <a href={`https://www.google.com/maps?q=${sub.location.lat},${sub.location.lng}`}
+              target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-4 py-2" style={{ background: 'var(--c-bg-surface)' }}>
+              <span className="text-xs">📍</span>
+              <span className="text-[10px] font-medium" style={{ color: 'var(--c-green)' }}>
+                {sub.location.lat.toFixed(4)}, {sub.location.lng.toFixed(4)}
+              </span>
+              <span className="text-[9px] ml-auto" style={{ color: 'var(--c-text-3)' }}>open ↗</span>
+            </a>
+          </div>
+        )}
+        {sub.songURL && (
+          <div className="px-4 pb-3" style={{ background: 'var(--c-bg-surface)' }}>
+            <iframe
+              src={`https://open.spotify.com/embed/${sub.songURL.replace('https://open.spotify.com/', '')}?utm_source=generator`}
+              width="100%" height="80" frameBorder="0"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy" style={{ display: 'block', borderRadius: 10 }} />
+          </div>
+        )}
+        {(sub.audioURLs ?? []).map((url, i) => (
+          <div key={i} className="border-t" style={{ borderColor: 'var(--c-border)', background: 'var(--c-bg-surface)' }}>
+            <p className="px-4 pt-2 text-[9px] tracking-[0.15em] uppercase font-semibold" style={{ color: 'var(--c-text-3)' }}>🎙 Voice memo</p>
+            <AudioPlayer url={url} />
+          </div>
+        ))}
 
         {/* Favourite */}
         <button onClick={onToggleFavorite}
@@ -414,17 +448,35 @@ function JournalCard({
           </div>
         )}
         {audios.map((url, i) => (
-          <div key={i} className="mt-2 rounded-xl overflow-hidden border" style={{ borderColor: '#E8E2D9' }}>
-            <p className="px-4 pt-2 text-[9px] tracking-[0.15em] uppercase font-semibold" style={{ color: '#C9BFA8' }}>🎙 Voice memo</p>
+          <div key={i} className="mt-2 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--c-border)' }}>
+            <p className="px-4 pt-2 text-[9px] tracking-[0.15em] uppercase font-semibold" style={{ color: 'var(--c-text-3)' }}>🎙 Voice memo</p>
             <AudioPlayer url={url} />
           </div>
         ))}
+
+        {sub.location && (
+          <div className="mt-3 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--c-border)' }}>
+            <iframe title="location map"
+              src={`https://www.openstreetmap.org/export/embed.html?bbox=${sub.location.lng - 0.012},${sub.location.lat - 0.008},${sub.location.lng + 0.012},${sub.location.lat + 0.008}&layer=mapnik&marker=${sub.location.lat},${sub.location.lng}`}
+              width="100%" height="140" loading="lazy"
+              style={{ display: 'block', border: 'none', pointerEvents: 'none' }} />
+            <a href={`https://www.google.com/maps?q=${sub.location.lat},${sub.location.lng}`}
+              target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5" style={{ background: 'var(--c-bg-surface)' }}>
+              <span className="text-xs">📍</span>
+              <span className="text-[10px] font-medium" style={{ color: 'var(--c-green)' }}>
+                {sub.location.lat.toFixed(4)}, {sub.location.lng.toFixed(4)}
+              </span>
+              <span className="text-[9px] ml-auto" style={{ color: 'var(--c-text-3)' }}>open ↗</span>
+            </a>
+          </div>
+        )}
 
         {sub.tags && sub.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-3">
             {sub.tags.map((tag) => (
               <span key={tag} className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
-                style={{ background: '#E8F0E9', color: '#2D5A3D' }}>{tag}</span>
+                style={{ background: 'var(--c-green-light)', color: 'var(--c-green)' }}>{tag}</span>
             ))}
           </div>
         )}
@@ -1081,7 +1133,7 @@ export default function TimelinePage() {
   }, [pairId])
 
   return (
-    <div className="flex flex-col min-h-screen animate-pageIn">
+    <div className="flex flex-col h-screen overflow-hidden animate-pageIn">
       {!coverDone && (() => {
         const names = Object.values(memberDocs).map((m) => m.displayName?.split(' ')[0]).filter(Boolean) as string[]
         return <BookCover onDone={() => setCoverDone(true)} name1={names[0]} name2={names[1]} />
