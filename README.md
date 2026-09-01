@@ -1,5 +1,17 @@
 # birds.eye
 
+**A shared daily journal for two people — where what you write stays hidden until you both do.**
+
+Every day, each person captures something that reminded them of the other — a photo, a thought, a voice memo, a song, a place, a sketch. Whatever it is, it stays completely private the moment it's submitted. The other person can't see it, can't peek, can't know what's coming.
+
+When both people have submitted for the day, everything reveals at once — a simultaneous moment of "here's what I was thinking about you." If one person wants to see the other's entry before submitting their own, they can tap "Reveal Anyway" and unlock it early (at the cost of the surprise).
+
+Every reveal becomes a permanent card in a shared timeline — a growing record of the small things you noticed, the songs that made you think of them, the places you went, the words you almost didn't write. Over time it becomes a journal of your relationship, authored by both of you, one day at a time.
+
+The app is private by design: no public profiles, no followers, no discovery. Just two people and their timeline.
+
+---
+
 A private PWA for exactly two people. Each person independently submits something — a photo, text, voice memo, sketch, song, or location — that reminded them of the other person that day. Their submission stays private until both have submitted (auto-reveal) or one person triggers "Reveal Anyway." Revealed entries form a permanent shared timeline they can browse together.
 
 **Core principle:** Submission privacy is enforced at the Firestore security-rules layer — neither person can read the other's entry until the reveal condition is satisfied, regardless of frontend state.
