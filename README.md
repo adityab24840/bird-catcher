@@ -16,23 +16,33 @@ The app is private by design: no public profiles, no followers, no discovery. Ju
 
 <table>
   <tr>
-    <td align="center"><b>Home — submission form</b></td>
-    <td align="center"><b>Waiting for partner</b></td>
-    <td align="center"><b>Revealed</b></td>
+    <td align="center"><b>Timeline — polaroid + journal + date nav</b></td>
+    <td align="center"><b>Timeline — polaroid lightbox</b></td>
+    <td align="center"><b>Timeline — dark mode</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/timeline-new.png" width="200" alt="Timeline new styles"></td>
+    <td><img src="docs/screenshots/timeline-polaroid.png" width="200" alt="Polaroid lightbox"></td>
+    <td><img src="docs/screenshots/timeline-dark.png" width="200" alt="Timeline dark mode"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Home — light</b></td>
+    <td align="center"><b>Home — dark</b></td>
+    <td align="center"><b>Landing — dark</b></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/home-form.png" width="200" alt="Home form"></td>
-    <td><img src="docs/screenshots/home-waiting.png" width="200" alt="Waiting for partner"></td>
-    <td><img src="docs/screenshots/home-revealed.png" width="200" alt="Revealed"></td>
+    <td><img src="docs/screenshots/home-dark.png" width="200" alt="Home dark mode"></td>
+    <td><img src="docs/screenshots/landing-dark.png" width="200" alt="Landing dark mode"></td>
   </tr>
   <tr>
-    <td align="center"><b>Timeline — journal view</b></td>
-    <td align="center"><b>Timeline — card detail</b></td>
+    <td align="center"><b>Waiting for partner</b></td>
+    <td align="center"><b>Revealed</b></td>
     <td align="center"><b>Stats page</b></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/timeline-journal.png" width="200" alt="Timeline journal"></td>
-    <td><img src="docs/screenshots/timeline-card.png" width="200" alt="Timeline card detail"></td>
+    <td><img src="docs/screenshots/home-waiting.png" width="200" alt="Waiting for partner"></td>
+    <td><img src="docs/screenshots/home-revealed.png" width="200" alt="Revealed"></td>
     <td><img src="docs/screenshots/stats.png" width="200" alt="Stats dashboard"></td>
   </tr>
   <tr>

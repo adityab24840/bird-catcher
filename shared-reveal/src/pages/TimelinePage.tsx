@@ -202,112 +202,66 @@ function AudioPlayer({ url }: { url: string }) {
   )
 }
 
-function SubmissionCard({
+/* ── Shared card inner content (media, text, tags, audio, location, song) ─── */
+function CardMedia({
   sub,
-  member,
-  isFavorited,
-  onToggleFavorite,
   onPhotoTap,
+  compact = false,
 }: {
   sub: SubmissionDoc
-  member: UserDoc | undefined
-  isFavorited: boolean
-  onToggleFavorite: () => void
   onPhotoTap: (url: string) => void
+  compact?: boolean
 }) {
-  const ts = sub.updatedAt ?? sub.submittedAt
-  const timeLabel = ts
-    ? ts.toDate().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-    : ''
-  const isUpdated = !!(sub.updatedAt)
-
   const photos = sub.photoURLs?.length ? sub.photoURLs : sub.photoURL ? [sub.photoURL] : []
   const texts = sub.texts?.length ? sub.texts : sub.text ? [sub.text] : []
   const audios = sub.audioURLs ?? []
-  const hasContent = photos.length > 0 || texts.length > 0 || audios.length > 0 || !!sub.sketchURL || !!sub.location || !!sub.songURL
-  const firstName = member?.displayName?.split(' ')[0] ?? '…'
 
   return (
-    <div
-      className="relative bg-white rounded-2xl overflow-hidden animate-fadeIn"
-      style={{ boxShadow: '0 2px 16px rgba(28,43,30,0.09)' }}
-    >
-      {/* Leading photo — full bleed */}
+    <>
       {photos[0] && (
         <img
           src={photos[0]}
           alt=""
           onClick={() => onPhotoTap(photos[0])}
           className="cursor-pointer w-full object-cover block active:opacity-90 transition-opacity"
-          style={{ height: 220 }}
+          style={{ height: compact ? 160 : 220 }}
         />
       )}
-
-      {/* Additional photos */}
-      {photos.slice(1).map((url, i) => (
-        <img
-          key={i}
-          src={url}
-          alt=""
-          onClick={() => onPhotoTap(url)}
+      {!compact && photos.slice(1).map((url, i) => (
+        <img key={i} src={url} alt="" onClick={() => onPhotoTap(url)}
           className="cursor-pointer w-full object-cover block active:opacity-90 border-t"
-          style={{ height: 180, borderColor: '#F0EBE0' }}
-        />
+          style={{ height: 180, borderColor: '#F0EBE0' }} />
       ))}
-
-      {/* Sketch */}
       {sub.sketchURL && (
-        <img
-          src={sub.sketchURL}
-          alt="sketch"
-          onClick={() => onPhotoTap(sub.sketchURL!)}
+        <img src={sub.sketchURL} alt="sketch" onClick={() => onPhotoTap(sub.sketchURL!)}
           className="w-full block border-t cursor-pointer active:opacity-80 transition-opacity"
-          style={{ borderColor: '#F0EBE0' }}
-        />
+          style={{ borderColor: '#F0EBE0' }} />
       )}
-
-      {/* Body text */}
       {texts.length > 0 && (
-        <div className="px-4 pt-4 pb-1">
+        <div className={`px-4 ${compact ? 'pt-3 pb-1' : 'pt-4 pb-1'}`}>
           {texts.map((t, i) => (
-            <p key={i} className="text-[15px] leading-relaxed mb-2 last:mb-0" style={{ color: '#1A1A16' }}>{t}</p>
+            <p key={i} className={`leading-relaxed mb-2 last:mb-0 ${compact ? 'text-[13px]' : 'text-[15px]'}`}
+              style={{ color: '#1A1A16' }}>{t}</p>
           ))}
         </div>
       )}
-
-      {/* Tags */}
       {sub.tags && sub.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 px-4 pt-3">
+        <div className="flex flex-wrap gap-1.5 px-4 pt-2">
           {sub.tags.map((tag) => (
-            <span
-              key={tag}
-              className="text-[10px] font-semibold px-2.5 py-1 rounded-full"
-              style={{ background: '#E8F0E9', color: '#2D5A3D' }}
-            >
-              {tag}
-            </span>
+            <span key={tag} className="text-[10px] font-semibold px-2.5 py-1 rounded-full"
+              style={{ background: '#E8F0E9', color: '#2D5A3D' }}>{tag}</span>
           ))}
         </div>
       )}
-
-      {/* Location map */}
-      {sub.location && (
+      {!compact && sub.location && (
         <div className="mt-3 mx-4 rounded-xl overflow-hidden border" style={{ borderColor: '#E8E2D9' }}>
-          <iframe
-            title="location map"
+          <iframe title="location map"
             src={`https://www.openstreetmap.org/export/embed.html?bbox=${sub.location.lng - 0.012},${sub.location.lat - 0.008},${sub.location.lng + 0.012},${sub.location.lat + 0.008}&layer=mapnik&marker=${sub.location.lat},${sub.location.lng}`}
-            width="100%"
-            height="150"
-            loading="lazy"
-            style={{ display: 'block', border: 'none', pointerEvents: 'none' }}
-          />
-          <a
-            href={`https://www.google.com/maps?q=${sub.location.lat},${sub.location.lng}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5"
-            style={{ background: '#F8F5F0' }}
-          >
+            width="100%" height="150" loading="lazy"
+            style={{ display: 'block', border: 'none', pointerEvents: 'none' }} />
+          <a href={`https://www.google.com/maps?q=${sub.location.lat},${sub.location.lng}`}
+            target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5" style={{ background: '#F8F5F0' }}>
             <span className="text-xs">📍</span>
             <span className="text-[10px] font-medium" style={{ color: '#2D5A3D' }}>
               {sub.location.lat.toFixed(4)}, {sub.location.lng.toFixed(4)}
@@ -316,24 +270,16 @@ function SubmissionCard({
           </a>
         </div>
       )}
-
-      {/* Song embed */}
-      {sub.songURL && (
+      {!compact && sub.songURL && (
         <div className="mt-3 mx-4 rounded-xl overflow-hidden">
           <iframe
             src={`https://open.spotify.com/embed/${sub.songURL.replace('https://open.spotify.com/', '')}?utm_source=generator`}
-            width="100%"
-            height="80"
-            frameBorder="0"
+            width="100%" height="80" frameBorder="0"
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy"
-            style={{ display: 'block', borderRadius: 12 }}
-          />
+            loading="lazy" style={{ display: 'block', borderRadius: 12 }} />
         </div>
       )}
-
-      {/* Audio memos */}
-      {audios.map((url, i) => (
+      {!compact && audios.map((url, i) => (
         <div key={i} className="mt-2 mx-4 rounded-xl overflow-hidden border" style={{ borderColor: '#E8E2D9' }}>
           <p className="px-4 pt-2 text-[9px] tracking-[0.15em] uppercase font-semibold" style={{ color: '#C9BFA8' }}>
             🎙 Voice memo
@@ -341,40 +287,212 @@ function SubmissionCard({
           <AudioPlayer url={url} />
         </div>
       ))}
+    </>
+  )
+}
 
-      {!hasContent && (
-        <p className="px-4 py-4 text-sm italic" style={{ color: '#C9BFA8' }}>Nothing shared</p>
-      )}
+/* ── Polaroid card — for entries with a photo ─────────────────────────────── */
+function PolaroidCard({
+  sub, member, isFavorited, onToggleFavorite, onPhotoTap, tilt = 0,
+}: {
+  sub: SubmissionDoc; member: UserDoc | undefined; isFavorited: boolean
+  onToggleFavorite: () => void; onPhotoTap: (url: string) => void; tilt?: number
+}) {
+  const photos = sub.photoURLs?.length ? sub.photoURLs : sub.photoURL ? [sub.photoURL] : []
+  const texts = sub.texts?.length ? sub.texts : sub.text ? [sub.text] : []
+  const ts = sub.updatedAt ?? sub.submittedAt
+  const timeLabel = ts ? ts.toDate().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''
+  const firstName = member?.displayName?.split(' ')[0] ?? '…'
+  const moods = sub.mood && MOOD_EMOJIS[sub.mood] ? MOOD_EMOJIS[sub.mood] : null
 
-      {/* Footer — attribution bar */}
+  return (
+    <div className="relative animate-fadeIn"
+      style={{
+        transform: `rotate(${tilt}deg)`,
+        transformOrigin: 'center top',
+        filter: 'drop-shadow(0 6px 20px rgba(28,43,30,0.18))',
+      }}
+    >
+      <div className="relative bg-white overflow-hidden" style={{ borderRadius: 4 }}>
+        {/* Photo */}
+        {photos[0] ? (
+          <img src={photos[0]} alt="" onClick={() => onPhotoTap(photos[0])}
+            className="cursor-pointer w-full object-cover block active:opacity-90 transition-opacity"
+            style={{ height: 240 }} />
+        ) : sub.sketchURL ? (
+          <img src={sub.sketchURL} alt="sketch" onClick={() => onPhotoTap(sub.sketchURL!)}
+            className="w-full block cursor-pointer" style={{ height: 200 }} />
+        ) : null}
+
+        {/* Polaroid bottom */}
+        <div className="px-5 pt-4 pb-5" style={{ background: '#FFFEF8' }}>
+          {texts.length > 0 && (
+            <p className="text-[14px] leading-snug mb-3" style={{ color: '#2A2A22', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+              {texts[0]}
+            </p>
+          )}
+          {sub.tags && sub.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-3">
+              {sub.tags.map((tag) => (
+                <span key={tag} className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                  style={{ background: '#E8F0E9', color: '#2D5A3D' }}>{tag}</span>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center justify-between mt-1">
+            <div className="flex items-center gap-2">
+              <Avatar photoURL={member?.photoURL ?? null} name={member?.displayName ?? null} />
+              <span className="text-[12px] font-semibold" style={{ color: '#2A2A22' }}>{firstName}</span>
+              {moods && <span className="text-sm">{moods}</span>}
+            </div>
+            <span className="text-[10px] tabular-nums" style={{ color: '#C9BFA8', fontFamily: 'Georgia, serif' }}>{timeLabel}</span>
+          </div>
+        </div>
+
+        {/* Favourite */}
+        <button onClick={onToggleFavorite}
+          className="absolute top-2.5 right-2.5 h-8 w-8 rounded-full flex items-center justify-center text-base transition-transform active:scale-75"
+          style={{ background: isFavorited ? 'rgba(253,236,234,0.95)' : 'rgba(255,255,255,0.82)', boxShadow: '0 1px 6px rgba(0,0,0,0.12)', backdropFilter: 'blur(6px)' }}
+          aria-label={isFavorited ? 'Unfavorite' : 'Favourite'}
+        >{isFavorited ? '❤️' : '🤍'}</button>
+      </div>
+    </div>
+  )
+}
+
+/* ── Journal page card — for text-only entries ────────────────────────────── */
+function JournalCard({
+  sub, member, isFavorited, onToggleFavorite, onPhotoTap,
+}: {
+  sub: SubmissionDoc; member: UserDoc | undefined; isFavorited: boolean
+  onToggleFavorite: () => void; onPhotoTap: (url: string) => void
+}) {
+  const texts = sub.texts?.length ? sub.texts : sub.text ? [sub.text] : []
+  const audios = sub.audioURLs ?? []
+  const ts = sub.updatedAt ?? sub.submittedAt
+  const timeLabel = ts ? ts.toDate().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''
+  const firstName = member?.displayName?.split(' ')[0] ?? '…'
+  const moods = sub.mood && MOOD_EMOJIS[sub.mood] ? MOOD_EMOJIS[sub.mood] : null
+
+  return (
+    <div className="relative animate-fadeIn overflow-hidden" style={{
+      borderRadius: 3,
+      background: '#FBF8F0',
+      boxShadow: '0 2px 12px rgba(28,43,30,0.10), inset 0 0 0 1px rgba(201,191,168,0.4)',
+      backgroundImage: `
+        repeating-linear-gradient(transparent, transparent 27px, rgba(180,170,148,0.3) 27px, rgba(180,170,148,0.3) 28px)
+      `,
+    }}>
+      {/* Left margin line */}
+      <div className="absolute top-0 bottom-0" style={{ left: 44, width: 1, background: 'rgba(184,92,56,0.22)' }} />
+
+      {/* Content */}
+      <div className="pl-14 pr-5 pt-5 pb-3">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Avatar photoURL={member?.photoURL ?? null} name={member?.displayName ?? null} />
+            <span className="text-[11px] font-semibold" style={{ color: '#7A7268' }}>{firstName}</span>
+            {moods && <span className="text-sm">{moods}</span>}
+          </div>
+          <span className="text-[10px]" style={{ color: '#C9BFA8', fontFamily: 'Georgia, serif' }}>{timeLabel}</span>
+        </div>
+
+        {texts.length === 0 && audios.length === 0 && (
+          <p className="text-sm italic" style={{ color: '#C9BFA8' }}>Nothing written</p>
+        )}
+        {texts.map((t, i) => (
+          <p key={i} className="text-[15px] leading-[28px] mb-0" style={{ color: '#1A1A16', fontFamily: 'Georgia, serif' }}>{t}</p>
+        ))}
+
+        {sub.songURL && (
+          <div className="mt-3 rounded-xl overflow-hidden">
+            <iframe src={`https://open.spotify.com/embed/${sub.songURL.replace('https://open.spotify.com/', '')}?utm_source=generator`}
+              width="100%" height="80" frameBorder="0"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy" style={{ display: 'block', borderRadius: 12 }} />
+          </div>
+        )}
+        {audios.map((url, i) => (
+          <div key={i} className="mt-2 rounded-xl overflow-hidden border" style={{ borderColor: '#E8E2D9' }}>
+            <p className="px-4 pt-2 text-[9px] tracking-[0.15em] uppercase font-semibold" style={{ color: '#C9BFA8' }}>🎙 Voice memo</p>
+            <AudioPlayer url={url} />
+          </div>
+        ))}
+
+        {sub.tags && sub.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-3">
+            {sub.tags.map((tag) => (
+              <span key={tag} className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                style={{ background: '#E8F0E9', color: '#2D5A3D' }}>{tag}</span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Favourite */}
+      <button onClick={onToggleFavorite}
+        className="absolute top-2.5 right-2.5 h-7 w-7 rounded-full flex items-center justify-center text-sm transition-transform active:scale-75"
+        style={{ background: isFavorited ? 'rgba(253,236,234,0.95)' : 'rgba(255,255,255,0.7)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' }}
+        aria-label={isFavorited ? 'Unfavorite' : 'Favourite'}
+      >{isFavorited ? '❤️' : '🤍'}</button>
+    </div>
+  )
+}
+
+/* ── Default card — fallback (mixed content without leading photo) ─────────── */
+function SubmissionCard({
+  sub,
+  member,
+  isFavorited,
+  onToggleFavorite,
+  onPhotoTap,
+  variant = 'default',
+  tilt = 0,
+}: {
+  sub: SubmissionDoc
+  member: UserDoc | undefined
+  isFavorited: boolean
+  onToggleFavorite: () => void
+  onPhotoTap: (url: string) => void
+  variant?: 'polaroid' | 'journal' | 'default'
+  tilt?: number
+}) {
+  const photos = sub.photoURLs?.length ? sub.photoURLs : sub.photoURL ? [sub.photoURL] : []
+  const texts = sub.texts?.length ? sub.texts : sub.text ? [sub.text] : []
+  const audios = sub.audioURLs ?? []
+  const hasVisualMedia = photos.length > 0 || !!sub.sketchURL
+  const hasContent = hasVisualMedia || texts.length > 0 || audios.length > 0 || !!sub.location || !!sub.songURL
+
+  if (variant === 'polaroid' || (variant === 'default' && hasVisualMedia)) {
+    return <PolaroidCard sub={sub} member={member} isFavorited={isFavorited} onToggleFavorite={onToggleFavorite} onPhotoTap={onPhotoTap} tilt={tilt} />
+  }
+  if (variant === 'journal' || (variant === 'default' && !hasVisualMedia)) {
+    return <JournalCard sub={sub} member={member} isFavorited={isFavorited} onToggleFavorite={onToggleFavorite} onPhotoTap={onPhotoTap} />
+  }
+
+  const ts = sub.updatedAt ?? sub.submittedAt
+  const timeLabel = ts ? ts.toDate().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''
+  const isUpdated = !!(sub.updatedAt)
+  const firstName = member?.displayName?.split(' ')[0] ?? '…'
+
+  return (
+    <div className="relative bg-white rounded-2xl overflow-hidden animate-fadeIn"
+      style={{ boxShadow: '0 2px 16px rgba(28,43,30,0.09)' }}>
+      <CardMedia sub={sub} onPhotoTap={onPhotoTap} />
+      {!hasContent && <p className="px-4 py-4 text-sm italic" style={{ color: '#C9BFA8' }}>Nothing shared</p>}
       <div className="flex items-center gap-2.5 px-4 pt-3 pb-3.5 mt-1" style={{ borderTop: '1px solid #F0EBE0' }}>
         <Avatar photoURL={member?.photoURL ?? null} name={member?.displayName ?? null} />
         <div className="flex-1 min-w-0">
           <span className="text-[13px] font-semibold" style={{ color: '#1A1A16' }}>{firstName}</span>
         </div>
-        {timeLabel && (
-          <span className="text-[11px] font-medium tabular-nums shrink-0" style={{ color: '#7A7268' }}>
-            {timeLabel}{isUpdated && ' · edited'}
-          </span>
-        )}
-        {sub.mood && MOOD_EMOJIS[sub.mood] && (
-          <span className="text-base" title={sub.mood}>{MOOD_EMOJIS[sub.mood]}</span>
-        )}
+        {timeLabel && <span className="text-[11px] font-medium tabular-nums shrink-0" style={{ color: '#7A7268' }}>{timeLabel}{isUpdated && ' · edited'}</span>}
+        {sub.mood && MOOD_EMOJIS[sub.mood] && <span className="text-base" title={sub.mood}>{MOOD_EMOJIS[sub.mood]}</span>}
       </div>
-
-      {/* Corner favourite */}
-      <button
-        onClick={onToggleFavorite}
+      <button onClick={onToggleFavorite}
         className="absolute top-2.5 right-2.5 h-8 w-8 rounded-full flex items-center justify-center text-base transition-transform active:scale-75"
-        style={{
-          background: isFavorited ? 'rgba(253,236,234,0.95)' : 'rgba(255,255,255,0.85)',
-          boxShadow: '0 1px 6px rgba(0,0,0,0.12)',
-          backdropFilter: 'blur(6px)',
-        }}
+        style={{ background: isFavorited ? 'rgba(253,236,234,0.95)' : 'rgba(255,255,255,0.85)', boxShadow: '0 1px 6px rgba(0,0,0,0.12)', backdropFilter: 'blur(6px)' }}
         aria-label={isFavorited ? 'Unfavorite' : 'Favourite'}
-      >
-        {isFavorited ? '❤️' : '🤍'}
-      </button>
+      >{isFavorited ? '❤️' : '🤍'}</button>
     </div>
   )
 }
@@ -483,17 +601,37 @@ function DaySection({
           <div className="h-16 rounded-2xl animate-pulse" style={{ background: '#EDE8DF' }} />
         </div>
       ) : (
-        <div className="space-y-5 pl-6">
-          {submissions.map((sub) => (
-            <SubmissionCard
-              key={sub.uid}
-              sub={sub}
-              member={memberDocs[sub.uid]}
-              isFavorited={favKeys.has(`${entry.date}/${sub.uid}`)}
-              onToggleFavorite={() => onToggleFav(entry.date, sub.uid)}
-              onPhotoTap={onPhotoTap}
-            />
-          ))}
+        <div className="pl-6">
+          {/* Masonry 2-col when both revealed; stacked otherwise */}
+          {isRevealed && submissions.length === 2 ? (
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              {submissions.map((sub, idx) => (
+                <SubmissionCard
+                  key={sub.uid}
+                  sub={sub}
+                  member={memberDocs[sub.uid]}
+                  isFavorited={favKeys.has(`${entry.date}/${sub.uid}`)}
+                  onToggleFavorite={() => onToggleFav(entry.date, sub.uid)}
+                  onPhotoTap={onPhotoTap}
+                  tilt={idx === 0 ? 1.2 : -0.8}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-5 mb-5">
+              {submissions.map((sub, idx) => (
+                <SubmissionCard
+                  key={sub.uid}
+                  sub={sub}
+                  member={memberDocs[sub.uid]}
+                  isFavorited={favKeys.has(`${entry.date}/${sub.uid}`)}
+                  onToggleFavorite={() => onToggleFav(entry.date, sub.uid)}
+                  onPhotoTap={onPhotoTap}
+                  tilt={idx === 0 ? 1.2 : -0.8}
+                />
+              ))}
+            </div>
+          )}
 
           {/* one_submitted: partner's blurred placeholder + reveal/waiting states */}
           {!isRevealed && (() => {
@@ -1066,11 +1204,44 @@ export default function TimelinePage() {
         </div>
       )}
 
+      {/* Date navigation strip — journal view only */}
+      {view === 'journal' && entries.length > 0 && (
+        <div
+          className="shrink-0 flex items-center gap-2 px-4 py-2.5 overflow-x-auto"
+          style={{ background: 'var(--c-bg)', borderBottom: '1px solid var(--c-border)' }}
+        >
+          {entries.slice(0, 60).map((entry) => {
+            const d = new Date(entry.date + 'T12:00:00')
+            const isToday = entry.date === new Date().toLocaleDateString('en-CA')
+            const day = d.getDate()
+            const mon = d.toLocaleDateString('en-US', { month: 'short' })
+            return (
+              <button
+                key={entry.date}
+                onClick={() => {
+                  const el = document.getElementById(`entry-${entry.date}`)
+                  el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
+                className="shrink-0 flex flex-col items-center rounded-xl px-2.5 py-1.5 transition-all"
+                style={{
+                  background: isToday ? '#2D5A3D' : entry.status === 'revealed' ? 'var(--c-bg-surface)' : 'transparent',
+                  border: `1px solid ${isToday ? '#2D5A3D' : 'var(--c-border)'}`,
+                  minWidth: 40,
+                }}
+              >
+                <span className="text-[14px] font-bold leading-none" style={{ color: isToday ? '#fff' : 'var(--c-text-1)' }}>{day}</span>
+                <span className="text-[9px] tracking-wide uppercase" style={{ color: isToday ? 'rgba(255,255,255,0.75)' : 'var(--c-text-3)' }}>{mon}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* Filter bar — journal view only */}
       {view === 'journal' && entries.length > 0 && (
         <div
           className="shrink-0 flex items-center gap-2 px-4 py-2 overflow-x-auto"
-          style={{ background: '#F2EDE4', borderBottom: '1px solid #E8E2D4' }}
+          style={{ background: 'var(--c-bg)', borderBottom: '1px solid var(--c-border)' }}
         >
           {/* Favorites toggle */}
           <button
