@@ -294,6 +294,24 @@ function CardMedia({
 }
 
 /* ── Polaroid card — for entries with a photo ─────────────────────────────── */
+// Deterministic layout seed from uid — stable across renders, varies per submission
+function uidSeed(uid: string, mod: number) {
+  let h = 0
+  for (let i = 0; i < uid.length; i++) h = (h * 31 + uid.charCodeAt(i)) >>> 0
+  return h % mod
+}
+
+const CARD_LAYOUTS = [
+  // 0: full-bleed, standard
+  { marginLeft: 0, marginRight: 0, borderRadius: 4 },
+  // 1: slight inset left
+  { marginLeft: '6%', marginRight: 0, borderRadius: 6 },
+  // 2: slight inset right
+  { marginLeft: 0, marginRight: '6%', borderRadius: 4 },
+  // 3: centred, narrower
+  { marginLeft: '4%', marginRight: '4%', borderRadius: 6 },
+]
+
 function PolaroidCard({
   sub, member, isFavorited, onToggleFavorite, onPhotoTap, tilt = 0,
 }: {
@@ -306,29 +324,37 @@ function PolaroidCard({
   const timeLabel = ts ? ts.toDate().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : ''
   const firstName = member?.displayName?.split(' ')[0] ?? '…'
   const moods = sub.mood && MOOD_EMOJIS[sub.mood] ? MOOD_EMOJIS[sub.mood] : null
+  const layout = CARD_LAYOUTS[uidSeed(sub.uid, CARD_LAYOUTS.length)]
 
   return (
     <div className="relative animate-fadeIn"
       style={{
+        marginLeft: layout.marginLeft,
+        marginRight: layout.marginRight,
         transform: `rotate(${tilt}deg)`,
         transformOrigin: 'center top',
         filter: 'drop-shadow(0 6px 20px rgba(28,43,30,0.18))',
       }}
     >
-      <div className="relative overflow-hidden" style={{ borderRadius: 4, background: 'var(--c-bg-card)' }}>
-        {/* Photo(s) */}
+      <div className="relative overflow-hidden" style={{ borderRadius: layout.borderRadius, background: 'var(--c-bg-card)' }}>
+        {/* Photo(s) — full height, no crop */}
         {photos[0] && (
           <img src={photos[0]} alt="" onClick={() => onPhotoTap(photos[0])}
             loading="lazy"
-            className="cursor-pointer w-full object-cover block active:opacity-90 transition-opacity"
-            style={{ height: 240 }} />
+            className="cursor-pointer w-full block active:opacity-90 transition-opacity"
+            style={{ display: 'block', maxHeight: 520, objectFit: 'contain', background: '#000' }} />
         )}
-        {/* Sketch — shown below photo if both exist */}
+        {photos.slice(1).map((url, i) => (
+          <img key={i} src={url} alt="" loading="lazy" onClick={() => onPhotoTap(url)}
+            className="cursor-pointer w-full block active:opacity-90 transition-opacity"
+            style={{ display: 'block', maxHeight: 400, objectFit: 'contain', background: '#000', borderTop: '1px solid var(--c-border)' }} />
+        ))}
+        {/* Sketch — full height, shown after photos */}
         {sub.sketchURL && (
           <img src={sub.sketchURL} alt="sketch" onClick={() => onPhotoTap(sub.sketchURL!)}
             loading="lazy"
             className="w-full block cursor-pointer"
-            style={{ height: 200, borderTop: photos[0] ? '1px solid var(--c-border)' : undefined }} />
+            style={{ display: 'block', borderTop: photos[0] ? '1px solid var(--c-border)' : undefined }} />
         )}
 
         {/* Polaroid bottom */}
