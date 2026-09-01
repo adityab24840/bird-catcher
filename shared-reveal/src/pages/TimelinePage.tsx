@@ -325,14 +325,16 @@ function SubmissionCard({
       )}
 
       {/* Footer — attribution bar */}
-      <div className="flex items-center gap-2.5 px-4 pt-3 pb-3.5 mt-1">
+      <div className="flex items-center gap-2.5 px-4 pt-3 pb-3.5 mt-1" style={{ borderTop: '1px solid #F0EBE0' }}>
         <Avatar photoURL={member?.photoURL ?? null} name={member?.displayName ?? null} />
         <div className="flex-1 min-w-0">
           <span className="text-[13px] font-semibold" style={{ color: '#1A1A16' }}>{firstName}</span>
-          <span className="text-[11px] ml-1.5" style={{ color: '#C9BFA8' }}>
+        </div>
+        {timeLabel && (
+          <span className="text-[11px] font-medium tabular-nums shrink-0" style={{ color: '#7A7268' }}>
             {timeLabel}{isUpdated && ' · edited'}
           </span>
-        </div>
+        )}
         {sub.mood && MOOD_EMOJIS[sub.mood] && (
           <span className="text-base" title={sub.mood}>{MOOD_EMOJIS[sub.mood]}</span>
         )}
@@ -454,12 +456,12 @@ function DaySection({
       )}
 
       {submissions.length === 0 && !subError ? (
-        <div className="space-y-3 pl-6">
+        <div className="space-y-5 pl-6">
           <div className="h-28 rounded-2xl animate-pulse" style={{ background: '#E8E2D4' }} />
           <div className="h-16 rounded-2xl animate-pulse" style={{ background: '#EDE8DF' }} />
         </div>
       ) : (
-        <div className="space-y-3 pl-6">
+        <div className="space-y-5 pl-6">
           {submissions.map((sub) => (
             <SubmissionCard
               key={sub.uid}
