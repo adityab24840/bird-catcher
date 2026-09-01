@@ -23,7 +23,6 @@ export function useTimeline(pairId: string | null): TimelineState {
       return
     }
 
-    console.log('[useTimeline] subscribing for pairId:', pairId)
     // Include one_submitted so today's pending entry shows in timeline.
     // No orderBy — avoids composite index requirement. Sort client-side (max 20 docs).
     const q = query(
@@ -35,7 +34,6 @@ export function useTimeline(pairId: string | null): TimelineState {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        console.log('[useTimeline] snapshot docs:', snap.docs.length, snap.docs.map(d => d.id + '/' + d.data().status))
         const sorted = snap.docs
           .map((d) => d.data() as EntryDoc)
           .sort((a, b) => b.date.localeCompare(a.date))
