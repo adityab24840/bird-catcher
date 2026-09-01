@@ -14,19 +14,38 @@ The app is private by design: no public profiles, no followers, no discovery. Ju
 
 ## Screenshots
 
-> Add screenshots by taking them on device and dropping them into `docs/screenshots/`. The placeholders below show which screens to capture.
-
-| Home — submission form | Waiting for partner | Revealed |
-|---|---|---|
-| `docs/screenshots/home-form.png` | `docs/screenshots/home-waiting.png` | `docs/screenshots/home-revealed.png` |
-
-| Timeline — journal view | Timeline — card detail | Stats page |
-|---|---|---|
-| `docs/screenshots/timeline-journal.png` | `docs/screenshots/timeline-card.png` | `docs/screenshots/stats.png` |
-
-| Pair setup | Onboarding | PDF export |
-|---|---|---|
-| `docs/screenshots/pair-setup.png` | `docs/screenshots/onboarding.png` | `docs/screenshots/export.png` |
+<table>
+  <tr>
+    <td align="center"><b>Home — submission form</b></td>
+    <td align="center"><b>Waiting for partner</b></td>
+    <td align="center"><b>Revealed</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/home-form.png" width="200" alt="Home form"></td>
+    <td><img src="docs/screenshots/home-waiting.png" width="200" alt="Waiting for partner"></td>
+    <td><img src="docs/screenshots/home-revealed.png" width="200" alt="Revealed"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Timeline — journal view</b></td>
+    <td align="center"><b>Timeline — card detail</b></td>
+    <td align="center"><b>Stats page</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/timeline-journal.png" width="200" alt="Timeline journal"></td>
+    <td><img src="docs/screenshots/timeline-card.png" width="200" alt="Timeline card detail"></td>
+    <td><img src="docs/screenshots/stats.png" width="200" alt="Stats dashboard"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Pair setup</b></td>
+    <td align="center"><b>Onboarding</b></td>
+    <td align="center"><b>PDF export</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/pair-setup.png" width="200" alt="Pair setup"></td>
+    <td><img src="docs/screenshots/onboarding.png" width="200" alt="Onboarding overlay"></td>
+    <td><img src="docs/screenshots/export.png" width="200" alt="PDF export"></td>
+  </tr>
+</table>
 
 ---
 
