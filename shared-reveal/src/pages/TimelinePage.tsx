@@ -363,7 +363,7 @@ function PolaroidCard({
 
 /* ── Journal page card — for text-only entries ────────────────────────────── */
 function JournalCard({
-  sub, member, isFavorited, onToggleFavorite, onPhotoTap,
+  sub, member, isFavorited, onToggleFavorite, onPhotoTap: _onPhotoTap,
 }: {
   sub: SubmissionDoc; member: UserDoc | undefined; isFavorited: boolean
   onToggleFavorite: () => void; onPhotoTap: (url: string) => void

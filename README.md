@@ -16,7 +16,7 @@ The app is private by design: no public profiles, no followers, no discovery. Ju
 
 ![birds.eye app walkthrough](docs/app-preview.gif)
 
-*Landing → onboarding → submit → waiting → reveal → timeline (polaroid + journal + masonry) → dark mode → stats*
+*Landing → onboarding → submit → waiting → reveal → journal cover animation → timeline (polaroid + journal + masonry + date strip) → dark mode → stats → export*
 
 ---
 
@@ -24,44 +24,54 @@ The app is private by design: no public profiles, no followers, no discovery. Ju
 
 <table>
   <tr>
-    <td align="center"><b>Timeline — polaroid + journal + date nav</b></td>
-    <td align="center"><b>Timeline — polaroid lightbox</b></td>
-    <td align="center"><b>Timeline — dark mode</b></td>
+    <td align="center"><b>Journal cover opens</b></td>
+    <td align="center"><b>Timeline — light</b></td>
+    <td align="center"><b>Timeline — dark</b></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/timeline-new.png" width="200" alt="Timeline new styles"></td>
-    <td><img src="docs/screenshots/timeline-polaroid.png" width="200" alt="Polaroid lightbox"></td>
+    <td><img src="docs/screenshots/timeline-book-cover.png" width="200" alt="Book cover animation"></td>
+    <td><img src="docs/screenshots/timeline-journal.png" width="200" alt="Timeline journal cards"></td>
     <td><img src="docs/screenshots/timeline-dark.png" width="200" alt="Timeline dark mode"></td>
   </tr>
   <tr>
-    <td align="center"><b>Home — light</b></td>
-    <td align="center"><b>Home — dark</b></td>
+    <td align="center"><b>Lightbox</b></td>
+    <td align="center"><b>Landing</b></td>
     <td align="center"><b>Landing — dark</b></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/home-form.png" width="200" alt="Home form"></td>
-    <td><img src="docs/screenshots/home-dark.png" width="200" alt="Home dark mode"></td>
+    <td><img src="docs/screenshots/timeline-card.png" width="200" alt="Photo lightbox"></td>
+    <td><img src="docs/screenshots/landing.png" width="200" alt="Landing screen"></td>
     <td><img src="docs/screenshots/landing-dark.png" width="200" alt="Landing dark mode"></td>
   </tr>
   <tr>
+    <td align="center"><b>Home — submit</b></td>
+    <td align="center"><b>Home — submit dark</b></td>
     <td align="center"><b>Waiting for partner</b></td>
-    <td align="center"><b>Revealed</b></td>
-    <td align="center"><b>Stats page</b></td>
   </tr>
   <tr>
+    <td><img src="docs/screenshots/home-form.png" width="200" alt="Home form"></td>
+    <td><img src="docs/screenshots/home-form-dark.png" width="200" alt="Home form dark"></td>
     <td><img src="docs/screenshots/home-waiting.png" width="200" alt="Waiting for partner"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Revealed</b></td>
+    <td align="center"><b>Stats — light</b></td>
+    <td align="center"><b>Stats — dark</b></td>
+  </tr>
+  <tr>
     <td><img src="docs/screenshots/home-revealed.png" width="200" alt="Revealed"></td>
     <td><img src="docs/screenshots/stats.png" width="200" alt="Stats dashboard"></td>
+    <td><img src="docs/screenshots/stats-dark.png" width="200" alt="Stats dark mode"></td>
   </tr>
   <tr>
     <td align="center"><b>Pair setup</b></td>
-    <td align="center"><b>Onboarding</b></td>
     <td align="center"><b>PDF export</b></td>
+    <td align="center"><b>Onboarding</b></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/pair-setup.png" width="200" alt="Pair setup"></td>
-    <td><img src="docs/screenshots/onboarding.png" width="200" alt="Onboarding overlay"></td>
     <td><img src="docs/screenshots/export.png" width="200" alt="PDF export"></td>
+    <td><img src="docs/screenshots/onboarding.png" width="200" alt="Onboarding overlay"></td>
   </tr>
 </table>
 
