@@ -83,11 +83,15 @@ export default function ExportPage() {
 
         const exportData = await Promise.all(
           entries.map(async (entry) => {
-            const subsSnap = await getDocs(
-              collection(db, 'pairs', pid, 'entries', entry.date, 'submissions')
-            )
-            const submissions = subsSnap.docs.map((d) => d.data() as SubmissionDoc)
-            return { entry, submissions }
+            try {
+              const subsSnap = await getDocs(
+                collection(db, 'pairs', pid, 'entries', entry.date, 'submissions')
+              )
+              const submissions = subsSnap.docs.map((d) => d.data() as SubmissionDoc)
+              return { entry, submissions }
+            } catch {
+              return { entry, submissions: [] }
+            }
           })
         )
 

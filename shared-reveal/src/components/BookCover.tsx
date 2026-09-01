@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-export default function BookCover({ onDone }: { onDone: () => void }) {
+export default function BookCover({ onDone, name1, name2 }: { onDone: () => void; name1?: string; name2?: string }) {
   const [open, setOpen] = useState(false)
   const [gone, setGone] = useState(false)
 
@@ -92,15 +92,28 @@ export default function BookCover({ onDone }: { onDone: () => void }) {
           }}>
             birds.eye
           </div>
-          <div style={{
-            marginTop: 8,
-            fontSize: 10,
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            color: 'rgba(143,175,138,0.45)',
-          }}>
-            A journal for two
-          </div>
+          {name1 && name2 ? (
+            <div style={{
+              marginTop: 10,
+              fontSize: 18,
+              letterSpacing: '0.08em',
+              fontWeight: 600,
+              color: 'rgba(143,175,138,0.85)',
+              fontFamily: 'Georgia, serif',
+            }}>
+              {name1} & {name2}
+            </div>
+          ) : (
+            <div style={{
+              marginTop: 8,
+              fontSize: 10,
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+              color: 'rgba(143,175,138,0.45)',
+            }}>
+              A journal for two
+            </div>
+          )}
         </div>
 
         {/* Decorative horizontal lines */}

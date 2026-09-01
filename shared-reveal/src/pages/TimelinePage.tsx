@@ -314,7 +314,7 @@ function PolaroidCard({
         filter: 'drop-shadow(0 6px 20px rgba(28,43,30,0.18))',
       }}
     >
-      <div className="relative bg-white overflow-hidden" style={{ borderRadius: 4 }}>
+      <div className="relative overflow-hidden" style={{ borderRadius: 4, background: 'var(--c-bg-card)' }}>
         {/* Photo */}
         {photos[0] ? (
           <img src={photos[0]} alt="" onClick={() => onPhotoTap(photos[0])}
@@ -326,9 +326,9 @@ function PolaroidCard({
         ) : null}
 
         {/* Polaroid bottom */}
-        <div className="px-5 pt-4 pb-5" style={{ background: '#FFFEF8' }}>
+        <div className="px-5 pt-4 pb-5" style={{ background: 'var(--c-bg-surface)' }}>
           {texts.length > 0 && (
-            <p className="text-[14px] leading-snug mb-3" style={{ color: '#2A2A22', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+            <p className="text-[14px] leading-snug mb-3" style={{ color: 'var(--c-text-1)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
               {texts[0]}
             </p>
           )}
@@ -336,17 +336,17 @@ function PolaroidCard({
             <div className="flex flex-wrap gap-1 mb-3">
               {sub.tags.map((tag) => (
                 <span key={tag} className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
-                  style={{ background: '#E8F0E9', color: '#2D5A3D' }}>{tag}</span>
+                  style={{ background: 'var(--c-green-light)', color: 'var(--c-green)' }}>{tag}</span>
               ))}
             </div>
           )}
           <div className="flex items-center justify-between mt-1">
             <div className="flex items-center gap-2">
               <Avatar photoURL={member?.photoURL ?? null} name={member?.displayName ?? null} />
-              <span className="text-[12px] font-semibold" style={{ color: '#2A2A22' }}>{firstName}</span>
+              <span className="text-[12px] font-semibold" style={{ color: 'var(--c-text-1)' }}>{firstName}</span>
               {moods && <span className="text-sm">{moods}</span>}
             </div>
-            <span className="text-[10px] tabular-nums" style={{ color: '#C9BFA8', fontFamily: 'Georgia, serif' }}>{timeLabel}</span>
+            <span className="text-[10px] tabular-nums" style={{ color: 'var(--c-text-3)', fontFamily: 'Georgia, serif' }}>{timeLabel}</span>
           </div>
         </div>
 
@@ -378,10 +378,10 @@ function JournalCard({
   return (
     <div className="relative animate-fadeIn overflow-hidden" style={{
       borderRadius: 3,
-      background: '#FBF8F0',
-      boxShadow: '0 2px 12px rgba(28,43,30,0.10), inset 0 0 0 1px rgba(201,191,168,0.4)',
+      background: 'var(--c-bg-surface)',
+      boxShadow: '0 2px 12px rgba(28,43,30,0.10), inset 0 0 0 1px rgba(201,191,168,0.25)',
       backgroundImage: `
-        repeating-linear-gradient(transparent, transparent 27px, rgba(180,170,148,0.3) 27px, rgba(180,170,148,0.3) 28px)
+        repeating-linear-gradient(transparent, transparent 27px, rgba(180,170,148,0.25) 27px, rgba(180,170,148,0.25) 28px)
       `,
     }}>
       {/* Left margin line */}
@@ -392,17 +392,17 @@ function JournalCard({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Avatar photoURL={member?.photoURL ?? null} name={member?.displayName ?? null} />
-            <span className="text-[11px] font-semibold" style={{ color: '#7A7268' }}>{firstName}</span>
+            <span className="text-[11px] font-semibold" style={{ color: 'var(--c-text-2)' }}>{firstName}</span>
             {moods && <span className="text-sm">{moods}</span>}
           </div>
-          <span className="text-[10px]" style={{ color: '#C9BFA8', fontFamily: 'Georgia, serif' }}>{timeLabel}</span>
+          <span className="text-[10px]" style={{ color: 'var(--c-text-3)', fontFamily: 'Georgia, serif' }}>{timeLabel}</span>
         </div>
 
         {texts.length === 0 && audios.length === 0 && (
-          <p className="text-sm italic" style={{ color: '#C9BFA8' }}>Nothing written</p>
+          <p className="text-sm italic" style={{ color: 'var(--c-text-3)' }}>Nothing written</p>
         )}
         {texts.map((t, i) => (
-          <p key={i} className="text-[15px] leading-[28px] mb-0" style={{ color: '#1A1A16', fontFamily: 'Georgia, serif' }}>{t}</p>
+          <p key={i} className="text-[15px] leading-[28px] mb-0" style={{ color: 'var(--c-text-1)', fontFamily: 'Georgia, serif' }}>{t}</p>
         ))}
 
         {sub.songURL && (
@@ -1082,7 +1082,10 @@ export default function TimelinePage() {
 
   return (
     <div className="flex flex-col min-h-screen animate-pageIn">
-      {!coverDone && <BookCover onDone={() => setCoverDone(true)} />}
+      {!coverDone && (() => {
+        const names = Object.values(memberDocs).map((m) => m.displayName?.split(' ')[0]).filter(Boolean) as string[]
+        return <BookCover onDone={() => setCoverDone(true)} name1={names[0]} name2={names[1]} />
+      })()}
       {/* Header */}
       <header
         className="flex items-center justify-between px-5 pt-12 pb-4 shrink-0"
@@ -1113,88 +1116,50 @@ export default function TimelinePage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-        <ThemeToggle />
-        {/* Search toggle */}
-        <button
-          onClick={() => { setShowSearch((v) => !v); setSearchQ('') }}
-          className="flex items-center justify-center rounded-lg px-2.5 py-1.5 border transition-all"
-          style={{ background: showSearch ? '#2D5A3D' : 'transparent', borderColor: showSearch ? '#2D5A3D' : '#C9BFA8' }}
-          title="Search"
-        >
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24">
-            <circle cx="11" cy="11" r="7" stroke={showSearch ? '#fff' : '#1A1A16'} strokeWidth="1.8" />
-            <path d="M20 20l-3.5-3.5" stroke={showSearch ? '#fff' : '#1A1A16'} strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <ThemeToggle />
 
-        {/* Stats button */}
-        <button
-          onClick={() => navigate('/stats')}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 border transition-all"
-          style={{ background: 'transparent', borderColor: '#C9BFA8' }}
-          title="Relationship stats"
-        >
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24">
-            <path d="M4 20V14M8 20V10M12 20V6M16 20V12M20 20V8" stroke="#1A1A16" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-          <span className="text-[10px] tracking-[0.15em] uppercase font-semibold" style={{ color: '#1A1A16' }}>Stats</span>
-        </button>
-
-        {/* Export button */}
-        <button
-          onClick={() => navigate('/export')}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 border transition-all"
-          style={{ background: 'transparent', borderColor: '#C9BFA8' }}
-          title="Export journal as PDF"
-        >
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24">
-            <path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="#1A1A16" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M5 20h14" stroke="#1A1A16" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-          <span className="text-[10px] tracking-[0.15em] uppercase font-semibold" style={{ color: '#1A1A16' }}>PDF</span>
-        </button>
-
-        {/* View toggle */}
-        <button
-          onClick={() => setView((v) => (v === 'journal' ? 'calendar' : 'journal'))}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 border transition-all"
-          style={{
-            background: view === 'calendar' ? '#2D5A3D' : 'transparent',
-            borderColor: view === 'calendar' ? '#2D5A3D' : '#C9BFA8',
-          }}
-        >
-          {view === 'journal' ? (
-            /* Calendar icon — shown when in journal mode (clicking switches to calendar) */
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24">
-              <rect x="3" y="4" width="18" height="18" rx="2" stroke="#1A1A16" strokeWidth="1.8" />
-              <path d="M3 9h18" stroke="#1A1A16" strokeWidth="1.8" />
-              <path d="M8 2v4M16 2v4" stroke="#1A1A16" strokeWidth="1.8" strokeLinecap="round" />
-            </svg>
-          ) : (
-            /* Journal icon — shown when in calendar mode (clicking switches to journal) */
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24">
-              <path
-                d="M4 6h16M4 10h16M4 14h16M4 18h16"
-                stroke="#FFFFFF"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
-          )}
-          <span
-            className="text-[10px] tracking-[0.15em] uppercase font-semibold"
-            style={{ color: view === 'calendar' ? '#FFFFFF' : '#1A1A16' }}
+          {/* Search toggle */}
+          <button
+            onClick={() => { setShowSearch((v) => !v); setSearchQ('') }}
+            className="flex items-center justify-center rounded-xl p-2 border transition-all"
+            style={{ background: showSearch ? 'var(--c-green)' : 'transparent', borderColor: showSearch ? 'var(--c-green)' : 'var(--c-border-mid)' }}
+            title="Search"
           >
-            {view === 'journal' ? 'Calendar' : 'Journal'}
-          </span>
-        </button>
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="7" stroke={showSearch ? '#fff' : 'var(--c-text-1)'} strokeWidth="1.8" />
+              <path d="M20 20l-3.5-3.5" stroke={showSearch ? '#fff' : 'var(--c-text-1)'} strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+
+          {/* View toggle */}
+          <button
+            onClick={() => setView((v) => (v === 'journal' ? 'calendar' : 'journal'))}
+            className="flex items-center justify-center rounded-xl p-2 border transition-all"
+            style={{
+              background: view === 'calendar' ? 'var(--c-green)' : 'transparent',
+              borderColor: view === 'calendar' ? 'var(--c-green)' : 'var(--c-border-mid)',
+            }}
+            title={view === 'journal' ? 'Calendar view' : 'Journal view'}
+          >
+            {view === 'journal' ? (
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="2" stroke="var(--c-text-1)" strokeWidth="1.8" />
+                <path d="M3 9h18" stroke="var(--c-text-1)" strokeWidth="1.8" />
+                <path d="M8 2v4M16 2v4" stroke="var(--c-text-1)" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                <path d="M4 6h16M4 10h16M4 14h16M4 18h16" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            )}
+          </button>
         </div>
       </header>
 
       {/* Search bar */}
       {showSearch && view === 'journal' && (
-        <div className="shrink-0 px-4 py-2" style={{ background: '#F2EDE4', borderBottom: '1px solid #E8E2D4' }}>
+        <div className="shrink-0 px-4 py-2" style={{ background: 'var(--c-bg)', borderBottom: '1px solid var(--c-border)' }}>
           <input
             autoFocus
             type="search"
@@ -1202,7 +1167,7 @@ export default function TimelinePage() {
             onChange={(e) => setSearchQ(e.target.value)}
             placeholder="Search entries…"
             className="w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none"
-            style={{ background: '#fff', border: '1px solid #C9BFA8', color: '#1A1A16' }}
+            style={{ background: 'var(--c-bg-card)', border: '1px solid var(--c-border-mid)', color: 'var(--c-text-1)' }}
           />
         </div>
       )}
@@ -1472,8 +1437,8 @@ export default function TimelinePage() {
 
       {/* Bottom nav */}
       <nav
-        className="shrink-0 flex pb-8"
-        style={{ background: '#1C2B1E' }}
+        className="shrink-0 flex"
+        style={{ background: '#1C2B1E', paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
       >
         <button
           onClick={() => navigate('/home')}
@@ -1507,6 +1472,17 @@ export default function TimelinePage() {
             <path d="M4 20V14M8 20V10M12 20V6M16 20V12M20 20V8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
           <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Stats</span>
+        </button>
+        <button
+          onClick={() => navigate('/export')}
+          className="flex-1 flex flex-col items-center pt-3 pb-1 gap-1"
+          style={{ color: '#4A5C4A' }}
+        >
+          <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
+            <path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M5 20h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Export</span>
         </button>
       </nav>
 

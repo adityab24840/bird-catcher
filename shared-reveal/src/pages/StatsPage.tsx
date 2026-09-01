@@ -69,11 +69,13 @@ export default function StatsPage() {
         const entryList = entriesSnap.docs.map((d) => d.data() as EntryDoc)
         setEntries(entryList)
 
-        // Load all submissions for revealed entries
+        // Load all submissions for revealed entries — silently skip any that fail rules
         const allSubs: SubmissionDoc[] = []
         await Promise.all(entryList.map(async (entry) => {
-          const subsSnap = await getDocs(collection(db, 'pairs', pairId, 'entries', entry.date, 'submissions'))
-          subsSnap.docs.forEach((d) => allSubs.push(d.data() as SubmissionDoc))
+          try {
+            const subsSnap = await getDocs(collection(db, 'pairs', pairId, 'entries', entry.date, 'submissions'))
+            subsSnap.docs.forEach((d) => allSubs.push(d.data() as SubmissionDoc))
+          } catch { /* partner submission may not be readable — skip */ }
         }))
         setSubmissions(allSubs)
         setLoading(false)
