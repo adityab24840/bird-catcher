@@ -71,7 +71,8 @@ export function useNotifications(uid: string | null): NotificationState {
     }
 
     try {
-      const fcmToken = await getToken(m, { vapidKey })
+      const swReg = await navigator.serviceWorker.getRegistration('/')
+      const fcmToken = await getToken(m, { vapidKey, serviceWorkerRegistration: swReg })
       setToken(fcmToken)
       await updateDoc(doc(db, `users/${uid}`), { fcmToken })
     } catch (err) {
@@ -90,7 +91,8 @@ export function useNotifications(uid: string | null): NotificationState {
     getMessagingInstance().then(async (m) => {
       if (!m || !active) return
       try {
-        const fcmToken = await getToken(m, { vapidKey })
+        const swReg = await navigator.serviceWorker.getRegistration('/')
+        const fcmToken = await getToken(m, { vapidKey, serviceWorkerRegistration: swReg })
         if (!active) return
         setToken(fcmToken)
         await updateDoc(doc(db, `users/${uid}`), { fcmToken })
