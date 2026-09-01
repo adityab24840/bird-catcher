@@ -19,13 +19,14 @@ export default defineConfig({
         enabled: false, // Enable only when actively debugging the service worker
       },
       manifest: {
-        name: 'Bird Eye',
-        short_name: 'Bird Eye',
+        name: 'birds.eye',
+        short_name: 'birds.eye',
         description: 'Share what reminded you of them today',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
+        theme_color: '#F2EDE4',
+        background_color: '#F2EDE4',
         display: 'standalone',
         start_url: '/',
+        orientation: 'portrait',
         icons: [
           {
             src: '/icons/icon-192.png',

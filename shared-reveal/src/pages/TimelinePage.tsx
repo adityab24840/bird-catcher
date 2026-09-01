@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import ThemeToggle from '../components/ThemeToggle'
 import { doc, onSnapshot, collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../firebase/config'
@@ -944,7 +945,7 @@ export default function TimelinePage() {
       {/* Header */}
       <header
         className="flex items-center justify-between px-5 pt-12 pb-4 shrink-0"
-        style={{ background: '#F2EDE4' }}
+        style={{ background: 'var(--c-bg)' }}
       >
         <div className="flex items-center gap-3">
           <button
@@ -972,6 +973,7 @@ export default function TimelinePage() {
         </div>
 
         <div className="flex items-center gap-2">
+        <ThemeToggle />
         {/* Search toggle */}
         <button
           onClick={() => { setShowSearch((v) => !v); setSearchQ('') }}

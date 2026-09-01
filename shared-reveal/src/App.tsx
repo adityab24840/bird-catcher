@@ -15,6 +15,7 @@ import { Navigate, Routes, Route } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { usePairId } from './hooks/usePair'
 import { useNotifications } from './hooks/useNotifications'
+import { useTheme } from './hooks/useTheme'
 import LandingPage from './pages/LandingPage'
 import HomePage from './pages/HomePage'
 import PairSetupPage from './pages/PairSetupPage'
@@ -31,6 +32,7 @@ export default function App() {
   const { user, loading } = useAuth()
   const { pairId, pairLoading } = usePairId(user?.uid ?? null)
   const { foregroundMessage, clearForegroundMessage } = useNotifications(user?.uid ?? null)
+  useTheme() // apply stored theme preference on mount
 
   // Hold rendering until both auth state and pair state are known.
   // pairLoading is only relevant when signed in (usePairId returns false immediately for null uid).

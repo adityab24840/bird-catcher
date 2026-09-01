@@ -5,11 +5,16 @@
     <!-- iOS PWA: apple-touch-icon is required for "Add to Home Screen" icon -->
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- theme-color: matches the PWA manifest theme_color -->
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- iOS standalone PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="birds.eye" />
+    <!-- theme-color: dual for light/dark system preference -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F2EDE4" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#18181A" />
     <meta name="description" content="Share what reminded you of them today" />
-    <title>Bird Eye</title>
+    <title>birds.eye</title>
   </head>
   <body>
     <div id="root"></div>

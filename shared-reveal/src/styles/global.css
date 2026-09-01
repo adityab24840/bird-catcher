@@ -18,8 +18,9 @@
   --c-accent-light:#FAF0EB;
 }
 
+/* System preference (when no manual override) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --c-bg:          #18181A;
     --c-bg-card:     #222224;
     --c-bg-surface:  #1E1E20;
@@ -35,6 +36,42 @@
     --c-accent:      #C06840;
     --c-accent-light:#2A1E18;
   }
+}
+
+/* Manual dark override — wins over system preference */
+:root[data-theme="dark"] {
+  --c-bg:          #18181A;
+  --c-bg-card:     #222224;
+  --c-bg-surface:  #1E1E20;
+  --c-bg-muted:    #1A1A1C;
+  --c-text-1:      #E8E2D9;
+  --c-text-2:      #8A8278;
+  --c-text-3:      #48443E;
+  --c-border:      #2A2A2C;
+  --c-border-mid:  #3A3A3C;
+  --c-green:       #4A8A60;
+  --c-green-light: #1A2820;
+  --c-green-mid:   #4A6A4A;
+  --c-accent:      #C06840;
+  --c-accent-light:#2A1E18;
+}
+
+/* Manual light override — wins over system preference */
+:root[data-theme="light"] {
+  --c-bg:          #F2EDE4;
+  --c-bg-card:     #FFFFFF;
+  --c-bg-surface:  #F8F5F0;
+  --c-bg-muted:    #F2EDE4;
+  --c-text-1:      #1A1A16;
+  --c-text-2:      #7A7268;
+  --c-text-3:      #C9BFA8;
+  --c-border:      #E8E2D9;
+  --c-border-mid:  #C9BFA8;
+  --c-green:       #2D5A3D;
+  --c-green-light: #E8F0E9;
+  --c-green-mid:   #8FAF8A;
+  --c-accent:      #B85C38;
+  --c-accent-light:#FAF0EB;
 }
 
 /*

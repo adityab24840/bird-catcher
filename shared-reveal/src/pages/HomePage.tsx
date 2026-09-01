@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import ThemeToggle from '../components/ThemeToggle'
 import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
@@ -867,29 +868,32 @@ export default function HomePage() {
       {/* Header */}
       <header
         className="px-5 pt-12 pb-4 flex items-start justify-between shrink-0"
-        style={{ background: '#F2EDE4' }}
+        style={{ background: 'var(--c-bg)' }}
       >
         <div>
-          <p className="text-xs tracking-[0.3em] font-bold" style={{ color: '#1A1A16' }}>
+          <p className="text-xs tracking-[0.3em] font-bold" style={{ color: 'var(--c-text-1)' }}>
             {pairDoc?.pairName ? pairDoc.pairName.toUpperCase() : 'BIRDS.EYE'}
           </p>
           {todayLabel && (
             <p
               className="text-[11px] tracking-[0.15em] mt-0.5 uppercase"
-              style={{ color: '#7A7268' }}
+              style={{ color: 'var(--c-text-2)' }}
             >
               {todayLabel}
             </p>
           )}
           {daysTogether !== null && (
-            <p className="text-[10px] tracking-[0.12em] mt-0.5 uppercase" style={{ color: '#C9BFA8' }}>
+            <p className="text-[10px] tracking-[0.12em] mt-0.5 uppercase" style={{ color: 'var(--c-text-3)' }}>
               Day {daysTogether}{revealedStreak >= 2 ? ` · 🔥 ${revealedStreak}` : ' · building this'}
             </p>
           )}
         </div>
-        <button onClick={() => setShowSignOutConfirm(true)} className="rounded-full" title="Account">
-          <Avatar photoURL={user?.photoURL ?? null} name={user?.displayName ?? null} size="sm" />
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button onClick={() => setShowSignOutConfirm(true)} className="rounded-full" title="Account">
+            <Avatar photoURL={user?.photoURL ?? null} name={user?.displayName ?? null} size="sm" />
+          </button>
+        </div>
       </header>
 
       {/* Notification permission prompt / iOS EU fallback */}

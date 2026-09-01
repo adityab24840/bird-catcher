@@ -8,6 +8,7 @@
  */
 import { useState } from 'react'
 import { signInWithGoogle } from '../services/auth'
+import ThemeToggle from '../components/ThemeToggle'
 
 export default function LandingPage() {
   const [loading, setLoading] = useState(false)
@@ -23,8 +24,11 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col animate-pageIn">
-      <div className="flex flex-1 flex-col items-center justify-center px-8 pb-16 pt-20 text-center">
+    <div className="flex min-h-screen flex-col animate-pageIn" style={{ background: 'var(--c-bg)' }}>
+      <div className="flex justify-end px-5 pt-12">
+        <ThemeToggle />
+      </div>
+      <div className="flex flex-1 flex-col items-center justify-center px-8 pb-16 pt-4 text-center">
         {/* Brand mark — leaf branch in dark green */}
         <div className="mb-8">
           <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
