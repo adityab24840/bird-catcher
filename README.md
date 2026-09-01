@@ -12,60 +12,103 @@ The app is private by design: no public profiles, no followers, no discovery. Ju
 
 ---
 
+## Screenshots
+
+> Add screenshots by taking them on device and dropping them into `docs/screenshots/`. The placeholders below show which screens to capture.
+
+| Home — submission form | Waiting for partner | Revealed |
+|---|---|---|
+| `docs/screenshots/home-form.png` | `docs/screenshots/home-waiting.png` | `docs/screenshots/home-revealed.png` |
+
+| Timeline — journal view | Timeline — card detail | Stats page |
+|---|---|---|
+| `docs/screenshots/timeline-journal.png` | `docs/screenshots/timeline-card.png` | `docs/screenshots/stats.png` |
+
+| Pair setup | Onboarding | PDF export |
+|---|---|---|
+| `docs/screenshots/pair-setup.png` | `docs/screenshots/onboarding.png` | `docs/screenshots/export.png` |
+
+---
+
 ## Features
 
 ### Daily submission
 Each day, open the app and share whatever reminded you of the other person. You can combine:
 - **Text** — write as much or as little as you want, with a rotating daily prompt to get you started
 - **Photos** — pick from your camera roll or take one directly; multiple photos per submission
-- **Voice memo** — record a voice note; plays back with a visual waveform
-- **Song** — paste a Spotify link; embeds an in-app player
-- **Location** — share where you are (or where you were); shows a map tile + opens in Google Maps
-- **Sketch** — draw something freehand on a canvas
+- **Voice memo** — record a voice note; plays back with a custom waveform visualiser
+- **Song** — paste a Spotify link; embeds an in-app playback card
+- **Location** — share where you are; shows a map tile with a Google Maps link
+- **Sketch** — draw something freehand on a canvas; tap the sketch in the timeline to zoom it
 - **Mood** — tag the feeling: happy, missing you, proud, or random
+- **Tags** — optional context chips: 🧳 trip · 💔 hard day · 🎉 milestone · 🌀 just because · 🎂 birthday
+
+Submissions auto-save as a **draft** (text, mood, and tags persist in local storage). If you close the app mid-way and come back, your draft is waiting.
 
 You can resubmit any day to update or add to what you've already shared.
 
 ### Privacy and reveal
-- Your entry is invisible to your partner until both of you have submitted — enforced by database security rules, not just the UI
-- Once both submit, entries reveal automatically and both get a push notification
-- Either person can tap **Reveal Anyway** to unlock early — useful when one person is travelling or in a different time zone
-- When auto-reveal fires on your device, a confetti animation plays
+- Your entry is invisible to your partner until both of you have submitted — enforced by Firestore security rules, not just the UI
+- Once both submit, entries reveal automatically; both devices get a push notification and a confetti animation plays
+- Either person can tap **Reveal Anyway** to unlock early (available on the home screen and from the blurred partner tile in the timeline)
+- The app home screen icon shows a **badge** when your partner has submitted and you haven't — even when the app is closed
+
+### Onboarding
+- First-time pairs see a 3-step bottom sheet explaining the mechanic: you go first → it stays hidden → both reveal at once
+- Shown once per device, dismissible at any step
 
 ### Shared timeline
-- Browse every revealed entry in a vertical journal layout — vertical rail, date markers, photo-first editorial cards
-- Entries with a full reveal are filled dots; partial entries are outlined
-- Month section headers separate the feed
-- Switch to calendar view to jump to any date
+- Vertical journal layout: timeline rail, filled/outlined date dots, photo-first editorial cards, month section headers
+- Partner's unrevealed tile appears blurred — tap anywhere on it to reveal early
+- Switch to **Calendar** view to jump to any specific date
+- **Search** — tap the search icon to filter entries by date or month name
+- **Flashback** — a "Remember this?" banner surfaces a random past entry each day; tap to scroll to it
 
 ### Favourites
-- Tap the ❤ corner badge on any submission card to favourite it
-- Filter the timeline to show only favourited entries via the Favourites button
+- Tap the ❤ corner badge on any submission card to favourite it (stored per-user, not shared)
+- Filter the timeline to favourited entries only via the Favourites chip
+
+### Relationship stats (`/stats`)
+Computed client-side from all revealed entries:
+- Total reveals, current streak 🔥, best streak 🏆
+- Days together and reveal hit rate (% of days with a mutual reveal)
+- Breakdown of what you've shared: photos, voice memos, songs, sketches
+- Day-of-week bar chart — which day you reveal most
+- Mood breakdown per person with progress bars
+- Timeline span: first and most recent reveal
 
 ### On This Day
-- If there are revealed entries from the same date in previous years, a banner surfaces them at the top of the timeline
+- A banner surfaces at the top of the timeline if there are revealed entries from the same calendar date in a previous year
 
 ### Reactions
 - On any revealed entry, tap an emoji to react (❤️ 😂 😢 🌿 ✨); your partner sees it in real time
 
 ### Ping
-- Send a quick "thinking of you" notification with no content attached
+- Send a quick "thinking of you" notification with no content — appears as a floating bubble animation on their screen
 
-### Streak
-- The app tracks consecutive days with a mutual reveal — displayed as a 🔥 streak counter on the home screen
+### Streak and milestones
+- Consecutive-reveal streak shown on the home screen (🔥 fires at ≥ 2 days)
+- Milestone push notifications at 1, 7, 10, 30, 50, 100, 200, and 365 reveals — sent once per threshold, never repeated
 
 ### Push notifications
-- Submissions, reveals, pings, and weekly/monthly summaries all trigger push notifications
-- Set a daily reminder time in account settings to be nudged if you haven't submitted by that hour
+- Submissions, reveals, pings, daily reminders, weekly summaries, monthly summaries, and yearly summaries all trigger FCM push notifications
+- Set a daily reminder time in account settings; the app nudges you if you haven't submitted by that hour
+
+### Scheduled summaries
+| Cadence | Fires | What it says |
+|---|---|---|
+| Weekly | Every Monday 09:00 UTC | Reveal count for the past 7 days |
+| Monthly | 1st of month 09:00 UTC | Reveal count for the previous calendar month |
+| Yearly | 1 Jan 10:00 UTC | Reveal count for the previous calendar year |
 
 ### Export
-- Generate a print-ready PDF journal of all revealed entries, grouped by month, from the timeline screen
+- Generate a print-ready PDF of all revealed entries, grouped by month, with photos, text, audio notation, and song links
 
 ### Entry deletion
-- Request to delete a revealed entry; the other person must consent before it's permanently removed from Firestore and Storage
+- Request to delete a revealed entry; your partner must consent before it is permanently removed from Firestore and Storage
 
 ### Pair management
-- Create a pair and share the 6-character invite code with your person
+- Create a pair and share the 6-character invite code (expires in 24 hours)
 - Leave a pair at any time from account settings; both users return to pair setup
 
 ---
@@ -74,30 +117,37 @@ You can resubmit any day to update or add to what you've already shared.
 
 ### Getting started
 1. Open the app and sign in with Google
-2. One person taps **Create a pair** and shares the 6-character code (expires in 24 hours)
-3. The other person taps **Join with code**, enters the code — both land on the home screen
+2. One person taps **Create a pair** and shares the 6-character code
+3. The other person taps **Join with code**, enters the code
+4. Both land on the home screen; the onboarding overlay explains the mechanic on first visit
 
 ### Submitting your daily entry
-1. Open the app on any day
-2. Write in the text box and/or tap the attachment strip to add a photo, voice memo, song, location, or sketch
-3. Pick a mood if you want
-4. Tap **Share** — your entry is saved and stays hidden from your partner
+1. Open the app on any day — your draft from earlier (if any) is already in the text box
+2. Write something, add a photo, record a voice memo, pin your location, paste a Spotify link, or draw
+3. Pick a mood and/or tags if you want
+4. Tap **Share** — your entry is saved and completely hidden from your partner
 
 ### Seeing each other's entries
-- If your partner has already submitted and you haven't: you'll see their tile blurred on the home screen and in the timeline — submit first to reveal, or tap **Reveal Anyway**
-- If you submitted first: a waiting state shows until your partner submits; the entries reveal automatically the moment they do
+- If your partner submitted first: their tile is blurred on the home screen. Submit to reveal both, or tap **Reveal Anyway**
+- If you submitted first: a waiting screen shows with a progress ring around your partner's avatar. The entries reveal the moment they submit — no refresh needed
+- The app badge on your home screen icon lights up when they've submitted and you haven't
 
 ### Browsing the timeline
 1. Tap **Timeline** in the bottom nav
-2. Scroll through the journal view — each day is a card with photos, text, and attribution
-3. Tap any photo to open the lightbox (pinch to zoom)
-4. Tap the ❤ on a card to favourite it
-5. Tap **Favourites** at the top to filter to saved entries only
-6. Switch to **Calendar** view to jump to a specific date
+2. Scroll the journal — each day shows photo-first cards, timestamps, mood, and tags
+3. Tap any photo or sketch to open the lightbox (pinch to zoom on mobile)
+4. Tap ❤ on a card to favourite it; tap the Favourites chip at the top to filter
+5. Tap the 🔍 search icon to find entries by date or month
+6. The "Remember this?" banner at the top links to a random past entry
+7. Switch to **Calendar** view to jump to a specific date
+
+### Checking your stats
+1. Tap **Stats** in the timeline's bottom nav or header button
+2. See total reveals, streaks, media counts, most active day, and mood breakdown
 
 ### Exporting your journal
-1. In the timeline, tap **Export PDF**
-2. The app loads all revealed entries and opens a print dialog automatically
+1. Tap **PDF** in the timeline header
+2. The app compiles all revealed entries and triggers the print dialog automatically
 
 ---
 
@@ -109,7 +159,10 @@ A private PWA for exactly two people. Each person independently submits somethin
 
 ## Table of Contents
 
-1. [Tech Stack](#tech-stack)
+1. [Screenshots](#screenshots)
+2. [Features](#features)
+3. [How to Use](#how-to-use)
+4. [Tech Stack](#tech-stack)
 2. [Project Structure](#project-structure)
 3. [Local Setup](#local-setup)
 4. [Environment Variables](#environment-variables)
@@ -416,6 +469,28 @@ All functions are defined in `functions/src/index.ts` and deployed as **Cloud Fu
 
 ---
 
+### `yearlySummary` — Scheduled
+
+**Schedule:** 1 January at 10:00 UTC  
+**What it does:**
+- For each active pair, counts revealed entries in the previous calendar year
+- Skips pairs where a yearly summary for that year already exists (idempotent)
+- Writes a `summaries/{id}` doc with `type: 'yearly'`, `period: 'yearly-YYYY'`, `revealCount`
+- Sends FCM notification to both partners: "You shared N moments together in YYYY 🌿"
+
+---
+
+### `checkMilestones` — Firestore trigger
+
+**Trigger:** `onDocumentWritten` on `pairs/{pairId}/entries/{entryDate}`  
+**What it does:**
+- Fires whenever an entry document changes
+- Counts total revealed entries for the pair
+- Compares against milestone thresholds: **1, 7, 10, 30, 50, 100, 200, 365**
+- Sends FCM notification for each newly crossed threshold (tracked in `pair.milestonesFired`; never repeats)
+
+---
+
 ## Frontend Pages
 
 ### `LandingPage` (`/`)
@@ -436,7 +511,7 @@ Main daily submission screen. Sections:
 
 - **Header** — pair name, date, day counter, revealed streak (🔥 if ≥ 2 consecutive revealed days)
 - **Dare banners** — shows if either partner has missed 3+ days
-- **Main form** — text area with daily writing prompt, mood picker, attachment strip (photo, voice, location, song, sketch) each with animated expand panels
+- **Main form** — text area with daily writing prompt, mood picker, tag chips, attachment strip (photo, voice, location, song, sketch) each with animated expand panels; draft auto-saved to localStorage
 - **Resubmit form** — shown when user already submitted today; same attachment strip
 - **Ping button** — sends "thinking of you" notification
 - **Waiting state** — shown when user submitted but partner hasn't; "Reveal Anyway" button available
@@ -451,7 +526,17 @@ Scrollable journal of all entries. Two views:
 - **Journal view** — vertical timeline rail with date dots, photo-first editorial cards, month section headers. Includes both `revealed` and `one_submitted` entries. Partner's unrevealed tile is a blurred tappable card that calls `revealAnyway` on tap.
 - **Calendar view** — month grid; tap a date to expand its DaySection below
 
-Features: pull-to-refresh, favourites filter (per-submission hearts stored in user doc), month filter, On This Day banner, weekly/monthly summary card, photo lightbox with pinch-to-zoom, custom audio waveform player, entry deletion (requires both partners to consent), emoji reactions.
+Features: pull-to-refresh, favourites filter (per-submission hearts stored in user doc), month filter, search bar (filters by date/month), flashback banner (random past entry), On This Day banner, weekly/monthly/yearly summary card, photo and sketch lightbox with pinch-to-zoom, custom audio waveform player, tags displayed as pills, entry deletion (requires both partners to consent), emoji reactions.
+
+### `StatsPage` (`/stats`)
+
+Relationship stats dashboard, computed client-side from all revealed entries and their submissions. Shows:
+- Total reveals, current streak, best streak ever
+- Days together and reveal hit rate
+- Media counts (photos, voice memos, songs, sketches)
+- Day-of-week bar chart (most active reveal day)
+- Mood breakdown per person with percentage bars
+- Timeline span (first and latest reveal dates)
 
 ### `ExportPage` (`/export`)
 
@@ -512,6 +597,7 @@ Upload helpers (direct SDK, not via CF):
 
 | Component | Purpose |
 |---|---|
+| `OnboardingOverlay` | 3-step bottom-sheet shown once after pair join; explains you-go-first mechanic; dismissed flag stored in localStorage |
 | `IOSInstallBanner` | Fixed bottom banner on iOS Safari (non-standalone) prompting Add to Home Screen |
 | `OfflineBanner` | Fixed top banner when `navigator.onLine === false` |
 | `UpdateBanner` | Shown by the service worker when a new version is available; triggers `skipWaiting` |
@@ -585,6 +671,7 @@ Upload helpers (direct SDK, not via CF):
   location?: { lat: number; lng: number } | null
   songURL?: string | null        // open.spotify.com canonical URL
   mood?: string | null           // 'happy' | 'missing-you' | 'proud' | 'random'
+  tags?: string[]                // optional context chips e.g. 'trip', 'hard day', 'milestone'
   submittedAt: Timestamp
   updatedAt?: Timestamp | null
 }
