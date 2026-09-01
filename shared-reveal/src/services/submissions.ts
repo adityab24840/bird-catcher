@@ -29,6 +29,11 @@ interface SubmitEntryInput {
   entryDate: string
   text: string | null
   photoURL: string | null
+  audioURL: string | null
+  mood: string | null
+  location: { lat: number; lng: number } | null
+  songURL: string | null
+  sketchURL: string | null
 }
 
 interface SubmitEntryResult {
@@ -65,6 +70,30 @@ export async function toJpegPreviewUrl(file: File): Promise<string> {
   return URL.createObjectURL(jpeg)
 }
 
+export async function uploadSubmissionSketch(
+  pairId: string,
+  entryDate: string,
+  uid: string,
+  blob: Blob
+): Promise<string> {
+  const storagePath = `pairs/${pairId}/entries/${entryDate}/${uid}/${Date.now()}_sketch.png`
+  const storageRef = ref(storage, storagePath)
+  const snapshot = await uploadBytes(storageRef, blob, { contentType: 'image/png' })
+  return getDownloadURL(snapshot.ref)
+}
+
+export async function uploadSubmissionAudio(
+  pairId: string,
+  entryDate: string,
+  uid: string,
+  blob: Blob
+): Promise<string> {
+  const storagePath = `pairs/${pairId}/entries/${entryDate}/${uid}/${Date.now()}_audio.webm`
+  const storageRef = ref(storage, storagePath)
+  const snapshot = await uploadBytes(storageRef, blob, { contentType: 'audio/webm' })
+  return getDownloadURL(snapshot.ref)
+}
+
 export async function uploadSubmissionPhoto(
   pairId: string,
   entryDate: string,
@@ -95,4 +124,29 @@ interface RevealAnywayResult {
 export const revealAnywayFn = httpsCallable<RevealAnywayInput, RevealAnywayResult>(
   functions,
   'revealAnyway'
+)
+
+export const reactToEntryFn = httpsCallable<{ entryDate: string; emoji: string }, { entryDate: string; emoji: string }>(
+  functions,
+  'reactToEntry'
+)
+
+export const sendPingFn = httpsCallable<Record<string, never>, { sent: boolean }>(
+  functions,
+  'sendPing'
+)
+
+export const leavePairFn = httpsCallable<Record<string, never>, { success: boolean }>(
+  functions,
+  'leavePair'
+)
+
+export const requestEntryDeletionFn = httpsCallable<{ entryDate: string }, { entryDate: string }>(
+  functions,
+  'requestEntryDeletion'
+)
+
+export const respondEntryDeletionFn = httpsCallable<{ entryDate: string; accept: boolean }, { entryDate: string; deleted: boolean }>(
+  functions,
+  'respondEntryDeletion'
 )

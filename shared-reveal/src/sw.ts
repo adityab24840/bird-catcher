@@ -67,5 +67,21 @@ onBackgroundMessage(getMessaging(firebaseApp), (payload) => {
   self.registration.showNotification(payload.notification?.title ?? 'Bird Eye', {
     body: payload.notification?.body,
     icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: { url: '/home' },
   })
+})
+
+// Open / focus the app when the user taps a push notification.
+self.addEventListener('notificationclick', (event: NotificationEvent) => {
+  event.notification.close()
+  const targetUrl: string = (event.notification.data?.url as string) ?? '/home'
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) return (client as WindowClient).focus()
+      }
+      return self.clients.openWindow(targetUrl)
+    })
+  )
 })

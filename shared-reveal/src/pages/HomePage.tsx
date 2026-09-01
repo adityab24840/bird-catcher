@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { doc, onSnapshot } from 'firebase/firestore'
+import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { signOutUser } from '../services/auth'
@@ -7,7 +7,17 @@ import { db } from '../firebase/config'
 import type { UserDoc } from '../types/index'
 import { useEntry } from '../hooks/useEntry'
 import { useStreak } from '../hooks/useStreak'
-import { uploadSubmissionPhoto, submitEntryFn, revealAnywayFn, toJpegPreviewUrl } from '../services/submissions'
+import { uploadSubmissionPhoto, uploadSubmissionAudio, uploadSubmissionSketch, submitEntryFn, revealAnywayFn, toJpegPreviewUrl, sendPingFn, leavePairFn } from '../services/submissions'
+import { useNotifications } from '../hooks/useNotifications'
+import NotificationPrompt from '../components/NotificationPrompt'
+import type { PairDoc } from '../types/index'
+
+const MOOD_OPTIONS: { key: string; emoji: string; label: string }[] = [
+  { key: 'happy', emoji: '😊', label: 'happy' },
+  { key: 'missing-you', emoji: '💭', label: 'missing you' },
+  { key: 'proud', emoji: '🌟', label: 'proud' },
+  { key: 'random', emoji: '🍃', label: 'random' },
+]
 
 function haptic(pattern: number | number[] = 10) {
   try { navigator.vibrate?.(pattern) } catch {}
@@ -40,24 +50,28 @@ function ResubmitForm({
   fileInputRef,
   photoPreview,
   submissionText,
+  selectedMood,
   submitting,
   uploadingPhoto,
   submitError,
   onPhotoSelect,
   onClearPhoto,
   onTextChange,
+  onMoodChange,
   onCancel,
   onSubmit,
 }: {
   fileInputRef: React.RefObject<HTMLInputElement | null>
   photoPreview: string | null
   submissionText: string
+  selectedMood: string | null
   submitting: boolean
   uploadingPhoto: boolean
   submitError: string | null
   onPhotoSelect: (e: React.ChangeEvent<HTMLInputElement>) => void
   onClearPhoto: () => void
   onTextChange: (val: string) => void
+  onMoodChange: (mood: string | null) => void
   onCancel: () => void
   onSubmit: () => void
 }) {
@@ -110,6 +124,25 @@ function ResubmitForm({
           color: '#1A1A16',
         }}
       />
+      {/* Mood picker */}
+      <div className="flex gap-2">
+        {MOOD_OPTIONS.map(({ key, emoji }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onMoodChange(selectedMood === key ? null : key)}
+            disabled={submitting || uploadingPhoto}
+            className="flex-1 py-2 rounded-xl text-xl transition-all active:scale-95"
+            style={{
+              background: selectedMood === key ? '#E8F0E9' : '#F8F5F0',
+              border: `1.5px solid ${selectedMood === key ? '#2D5A3D' : '#E8E2D9'}`,
+            }}
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+
       {submitError && (
         <p className="text-xs" style={{ color: '#B85C38' }}>
           {submitError}
@@ -136,6 +169,265 @@ function ResubmitForm({
   )
 }
 
+function formatHour(h: number): string {
+  const d = new Date()
+  d.setHours(h, 0, 0, 0)
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+const SKETCH_COLORS = ['#1A1A16', '#2D5A3D', '#B85C38', '#7A7268', '#C9BFA8', '#F8F5F0']
+const SKETCH_SIZES = [2, 5, 10]
+
+function SketchPad({ onBlob, disabled }: { onBlob: (blob: Blob | null) => void; disabled: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const drawingRef = useRef(false)
+  const lastRef = useRef<{ x: number; y: number } | null>(null)
+  const [color, setColor] = useState('#1A1A16')
+  const [brushSize, setBrushSize] = useState(4)
+  const [hasStrokes, setHasStrokes] = useState(false)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = '#F8F5F0'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+  }, [])
+
+  function getPos(e: PointerEvent) {
+    const canvas = canvasRef.current!
+    const rect = canvas.getBoundingClientRect()
+    return {
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (canvas.height / rect.height),
+    }
+  }
+
+  function stroke(from: { x: number; y: number }, to: { x: number; y: number }, c: string, size: number) {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (!ctx || !canvas) return
+    ctx.strokeStyle = c
+    ctx.lineWidth = size * (canvas.width / canvas.getBoundingClientRect().width)
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    ctx.moveTo(from.x, from.y)
+    ctx.lineTo(to.x, to.y)
+    ctx.stroke()
+  }
+
+  function emitBlob() {
+    canvasRef.current?.toBlob((b) => { if (b) onBlob(b) }, 'image/png')
+  }
+
+  function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (disabled) return
+    canvasRef.current?.setPointerCapture(e.pointerId)
+    drawingRef.current = true
+    const pos = getPos(e.nativeEvent)
+    lastRef.current = pos
+    stroke(pos, pos, color, brushSize)
+  }
+
+  function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!drawingRef.current || !lastRef.current) return
+    const pos = getPos(e.nativeEvent)
+    stroke(lastRef.current, pos, color, brushSize)
+    lastRef.current = pos
+  }
+
+  function onPointerUp() {
+    if (!drawingRef.current) return
+    drawingRef.current = false
+    lastRef.current = null
+    setHasStrokes(true)
+    emitBlob()
+  }
+
+  function clear() {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (!ctx || !canvas) return
+    ctx.fillStyle = '#F8F5F0'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    setHasStrokes(false)
+    onBlob(null)
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1.5 flex-1">
+          {SKETCH_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setColor(c)}
+              className="h-7 w-7 rounded-full shrink-0 transition-all"
+              style={{
+                background: c,
+                border: color === c ? '2.5px solid #2D5A3D' : '1.5px solid #C9BFA8',
+              }}
+            />
+          ))}
+        </div>
+        <div className="flex gap-1.5 items-center">
+          {SKETCH_SIZES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setBrushSize(s)}
+              className="flex items-center justify-center rounded-full transition-all"
+              style={{
+                width: 28, height: 28,
+                background: brushSize === s ? '#E8F0E9' : '#F8F5F0',
+                border: `1.5px solid ${brushSize === s ? '#2D5A3D' : '#E8E2D9'}`,
+              }}
+            >
+              <div className="rounded-full" style={{
+                width: s === 2 ? 4 : s === 5 ? 8 : 13,
+                height: s === 2 ? 4 : s === 5 ? 8 : 13,
+                background: '#1A1A16',
+              }} />
+            </button>
+          ))}
+        </div>
+        {hasStrokes && (
+          <button type="button" onClick={clear}
+            className="text-xs px-2.5 py-1 rounded-lg ml-1"
+            style={{ background: '#F2EDE4', border: '1px solid #C9BFA8', color: '#7A7268' }}>
+            Clear
+          </button>
+        )}
+      </div>
+      <canvas
+        ref={canvasRef}
+        width={640}
+        height={320}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        className="w-full rounded-xl"
+        style={{ touchAction: 'none', border: '1.5px solid #E8E2D9', cursor: 'crosshair', display: 'block' }}
+      />
+    </div>
+  )
+}
+
+function parseSpotifyURL(raw: string): string | null {
+  const match = raw.match(/open\.spotify\.com\/(track|album|playlist|episode)\/([A-Za-z0-9]+)/)
+  if (!match) return null
+  return `https://open.spotify.com/${match[1]}/${match[2]}`
+}
+
+
+function VoiceRecorder({
+  onBlob,
+  disabled,
+}: {
+  onBlob: (blob: Blob | null) => void
+  disabled: boolean
+}) {
+  const [recording, setRecording] = useState(false)
+  const [seconds, setSeconds] = useState(0)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const mediaRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  function clearPreview() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setPreviewUrl(null)
+    onBlob(null)
+  }
+
+  async function startRecording() {
+    clearPreview()
+    chunksRef.current = []
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mr = new MediaRecorder(stream)
+      mediaRef.current = mr
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      mr.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop())
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        const url = URL.createObjectURL(blob)
+        setPreviewUrl(url)
+        onBlob(blob)
+      }
+      mr.start()
+      setRecording(true)
+      setSeconds(0)
+      timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000)
+    } catch {
+      // mic denied or unavailable
+    }
+  }
+
+  function stopRecording() {
+    mediaRef.current?.stop()
+    mediaRef.current = null
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+    setRecording(false)
+  }
+
+  const mm = String(Math.floor(seconds / 60)).padStart(2, '0')
+  const ss = String(seconds % 60).padStart(2, '0')
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[10px] tracking-[0.15em] uppercase" style={{ color: '#C9BFA8' }}>
+        Voice memo
+      </p>
+      {previewUrl ? (
+        <div className="flex items-center gap-2">
+          <audio src={previewUrl} controls className="flex-1 h-8" style={{ minWidth: 0 }} />
+          <button
+            type="button"
+            onClick={clearPreview}
+            className="h-8 w-8 rounded-full flex items-center justify-center text-sm"
+            style={{ background: '#F2EDE4', border: '1px solid #C9BFA8', color: '#7A7268' }}
+          >
+            ×
+          </button>
+        </div>
+      ) : recording ? (
+        <div className="flex items-center gap-3">
+          <span
+            className="h-2 w-2 rounded-full animate-pulse"
+            style={{ background: '#B85C38' }}
+          />
+          <span className="text-sm font-mono" style={{ color: '#B85C38' }}>
+            {mm}:{ss}
+          </span>
+          <button
+            type="button"
+            onClick={stopRecording}
+            className="ml-auto rounded-full px-4 py-1.5 text-xs font-semibold text-white"
+            style={{ background: '#B85C38' }}
+          >
+            Stop
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={startRecording}
+          disabled={disabled}
+          className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all active:scale-95 disabled:opacity-40"
+          style={{ background: '#F8F5F0', border: '1.5px solid #E8E2D9', color: '#7A7268' }}
+        >
+          <span>🎙️</span>
+          <span>Record voice memo</span>
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function HomePage() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -143,6 +435,7 @@ export default function HomePage() {
 
   const [userDoc, setUserDoc] = useState<UserDoc | null>(null)
   const [partnerDoc, setPartnerDoc] = useState<UserDoc | null>(null)
+  const [pairDoc, setPairDoc] = useState<PairDoc | null>(null)
   const [docLoading, setDocLoading] = useState(true)
   const [partnerId, setPartnerId] = useState<string | null>(null)
 
@@ -157,6 +450,32 @@ export default function HomePage() {
   const [revealError, setRevealError] = useState<string | null>(null)
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false)
   const [showResubmitForm, setShowResubmitForm] = useState(false)
+  const [selectedMood, setSelectedMood] = useState<string | null>(null)
+  const [pinging, setPinging] = useState(false)
+  const [pingReceived, setPingReceived] = useState(false)
+  const [pingCooldown, setPingCooldown] = useState(false)
+  const mountTimeRef = useRef(Date.now())
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  const [locationData, setLocationData] = useState<{ lat: number; lng: number } | null>(null)
+  const [gettingLocation, setGettingLocation] = useState(false)
+  const [songInput, setSongInput] = useState('')
+  const [songURL, setSongURL] = useState<string | null>(null)
+  const [sketchBlob, setSketchBlob] = useState<Blob | null>(null)
+  const [showSketch, setShowSketch] = useState(false)
+  const [reminderInput, setReminderInput] = useState('')
+  const [savingReminder, setSavingReminder] = useState(false)
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  const [leaveError, setLeaveError] = useState<string | null>(null)
+  const [editingNote, setEditingNote] = useState(false)
+  const [noteText, setNoteText] = useState('')
+  const [savingNote, setSavingNote] = useState(false)
+  const [editingPairName, setEditingPairName] = useState(false)
+  const [pairNameText, setPairNameText] = useState('')
+  const [savingPairName, setSavingPairName] = useState(false)
+
+  const { supported: notifSupported, permission: notifPermission, requestPermission } =
+    useNotifications(user?.uid ?? null)
 
   useEffect(() => {
     if (!user) return
@@ -177,12 +496,25 @@ export default function HomePage() {
   useEffect(() => {
     if (!userDoc?.pairId) {
       setPartnerId(null)
+      setPairDoc(null)
       return
     }
     const unsub = onSnapshot(doc(db, 'pairs', userDoc.pairId), (snap) => {
       if (!snap.exists()) return
-      const members: string[] = snap.data().members
-      setPartnerId(members.find((m) => m !== user?.uid) ?? null)
+      const data = snap.data() as PairDoc
+      setPairDoc(data)
+      setPartnerId(data.members.find((m) => m !== user?.uid) ?? null)
+
+      // Detect incoming ping from partner (ignore own pings and pings before mount)
+      const ping = data.lastPing
+      if (ping?.from && ping.from !== user?.uid) {
+        const pingAt = ping.at?.toMillis?.() ?? 0
+        if (pingAt > mountTimeRef.current) {
+          setPingReceived(true)
+          haptic([10, 50, 10])
+          setTimeout(() => setPingReceived(false), 3000)
+        }
+      }
     })
     return () => unsub()
   }, [userDoc?.pairId, user?.uid])
@@ -209,6 +541,10 @@ export default function HomePage() {
     user?.uid ?? null,
     partnerId,
   )
+
+  const daysTogether = pairDoc?.createdAt
+    ? Math.max(1, Math.floor((Date.now() - pairDoc.createdAt.toMillis()) / 86400000) + 1)
+    : null
 
   const iSubmitted = entryDoc?.submittedMembers?.includes(user?.uid ?? '') ?? false
   const partnerSubmitted = entryDoc?.submittedMembers?.includes(partnerId ?? '') ?? false
@@ -246,23 +582,38 @@ export default function HomePage() {
 
   async function handleSubmit() {
     setSubmitError(null)
-    if (!selectedPhoto && !submissionText.trim()) {
-      setSubmitError('Add a photo or write something first.')
+    if (!selectedPhoto && !submissionText.trim() && !audioBlob && !locationData && !songURL && !sketchBlob) {
+      setSubmitError('Add a photo, write something, record a memo, pin a location, add a song, or draw something.')
       return
     }
     setSubmitting(true)
     let photoURL: string | null = null
+    let audioURL: string | null = null
     try {
       if (selectedPhoto && userDoc?.pairId && user) {
         setUploadingPhoto(true)
         photoURL = await uploadSubmissionPhoto(userDoc.pairId, entryDate, user.uid, selectedPhoto)
         setUploadingPhoto(false)
       }
-      await submitEntryFn({ entryDate, text: submissionText.trim() || null, photoURL })
+      if (audioBlob && userDoc?.pairId && user) {
+        audioURL = await uploadSubmissionAudio(userDoc.pairId, entryDate, user.uid, audioBlob)
+      }
+      let sketchURL: string | null = null
+      if (sketchBlob && userDoc?.pairId && user) {
+        sketchURL = await uploadSubmissionSketch(userDoc.pairId, entryDate, user.uid, sketchBlob)
+      }
+      await submitEntryFn({ entryDate, text: submissionText.trim() || null, photoURL, audioURL, mood: selectedMood, location: locationData, songURL, sketchURL })
       haptic(15)
       setSelectedPhoto(null)
       setPhotoPreview(null)
       setSubmissionText('')
+      setSelectedMood(null)
+      setAudioBlob(null)
+      setLocationData(null)
+      setSongURL(null)
+      setSongInput('')
+      setSketchBlob(null)
+      setShowSketch(false)
     } catch (err: unknown) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to submit')
       console.error('[HomePage] submit error:', err)
@@ -306,7 +657,7 @@ export default function HomePage() {
       >
         <div>
           <p className="text-xs tracking-[0.3em] font-bold" style={{ color: '#1A1A16' }}>
-            BIRDS.EYE
+            {pairDoc?.pairName ? pairDoc.pairName.toUpperCase() : 'BIRDS.EYE'}
           </p>
           {todayLabel && (
             <p
@@ -316,11 +667,23 @@ export default function HomePage() {
               {todayLabel}
             </p>
           )}
+          {daysTogether !== null && (
+            <p className="text-[10px] tracking-[0.12em] mt-0.5 uppercase" style={{ color: '#C9BFA8' }}>
+              Day {daysTogether} · building this
+            </p>
+          )}
         </div>
         <button onClick={() => setShowSignOutConfirm(true)} className="rounded-full" title="Account">
           <Avatar photoURL={user?.photoURL ?? null} name={user?.displayName ?? null} size="sm" />
         </button>
       </header>
+
+      {/* Notification permission prompt / iOS EU fallback */}
+      <NotificationPrompt
+        supported={notifSupported}
+        permission={notifPermission}
+        onRequest={requestPermission}
+      />
 
       {/* Main content */}
       <main className="flex-1 px-5 overflow-y-auto pb-4">
@@ -403,12 +766,14 @@ export default function HomePage() {
                 fileInputRef={fileInputRef}
                 photoPreview={photoPreview}
                 submissionText={submissionText}
+                selectedMood={selectedMood}
                 submitting={submitting}
                 uploadingPhoto={uploadingPhoto}
                 submitError={submitError}
                 onPhotoSelect={handlePhotoSelect}
                 onClearPhoto={clearPhoto}
                 onTextChange={setSubmissionText}
+                onMoodChange={setSelectedMood}
                 onCancel={cancelResubmit}
                 onSubmit={submitAndCloseResubmit}
               />
@@ -430,6 +795,16 @@ export default function HomePage() {
                 Submitted
               </span>
             </div>
+
+            {/* Ping received animation */}
+            {pingReceived && (
+              <div className="animate-popIn text-center" style={{ marginBottom: -8 }}>
+                <span className="text-2xl" style={{ animation: 'leafFloat 2.5s ease forwards', display: 'inline-block' }}>💭</span>
+                <p className="text-[10px] tracking-widest uppercase mt-1" style={{ color: '#7A7268' }}>
+                  {partnerFirstName} is thinking of you
+                </p>
+              </div>
+            )}
 
             {/* Partner avatar */}
             <div className="relative" style={{ width: 88, height: 88 }}>
@@ -492,6 +867,28 @@ export default function HomePage() {
               )}
             </div>
 
+            {/* Thinking of you ping */}
+            {!partnerSubmitted && (
+              <button
+                onClick={async () => {
+                  if (pingCooldown) return
+                  setPinging(true)
+                  try {
+                    await sendPingFn({})
+                    haptic(15)
+                    setPingCooldown(true)
+                    setTimeout(() => setPingCooldown(false), 30000)
+                  } catch { /* best-effort */ }
+                  setPinging(false)
+                }}
+                disabled={pinging || pingCooldown}
+                className="text-xs font-medium px-5 py-2 rounded-full transition-all active:scale-95 disabled:opacity-40"
+                style={{ background: '#F2EDE4', border: '1px solid #C9BFA8', color: '#7A7268' }}
+              >
+                {pingCooldown ? '💭 sent' : pinging ? '…' : '💭 thinking of you'}
+              </button>
+            )}
+
             {/* Divider */}
             <div className="w-full" style={{ borderTop: '1px solid #C9BFA8' }} />
 
@@ -523,12 +920,14 @@ export default function HomePage() {
                   fileInputRef={fileInputRef}
                   photoPreview={photoPreview}
                   submissionText={submissionText}
+                  selectedMood={selectedMood}
                   submitting={submitting}
                   uploadingPhoto={uploadingPhoto}
                   submitError={submitError}
                   onPhotoSelect={handlePhotoSelect}
                   onClearPhoto={clearPhoto}
                   onTextChange={setSubmissionText}
+                  onMoodChange={setSelectedMood}
                   onCancel={cancelResubmit}
                   onSubmit={submitAndCloseResubmit}
                 />
@@ -614,6 +1013,159 @@ export default function HomePage() {
               )}
             </div>
 
+            {/* Mood picker */}
+            <div>
+              <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: '#C9BFA8' }}>
+                How are you feeling?
+              </p>
+              <div className="flex gap-2">
+                {MOOD_OPTIONS.map(({ key, emoji }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setSelectedMood(selectedMood === key ? null : key)}
+                    disabled={submitting || uploadingPhoto}
+                    className="flex-1 py-2.5 rounded-xl text-xl transition-all active:scale-95"
+                    style={{
+                      background: selectedMood === key ? '#E8F0E9' : '#F8F5F0',
+                      border: `1.5px solid ${selectedMood === key ? '#2D5A3D' : '#E8E2D9'}`,
+                    }}
+                    title={key}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Voice recorder */}
+            <VoiceRecorder
+              onBlob={setAudioBlob}
+              disabled={submitting || uploadingPhoto}
+            />
+
+            {/* Location pin */}
+            <div>
+              <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: '#C9BFA8' }}>
+                Location
+              </p>
+              {locationData ? (
+                <div
+                  className="flex items-center gap-2 rounded-xl px-4 py-2.5"
+                  style={{ background: '#E8F0E9', border: '1.5px solid #8FAF8A' }}
+                >
+                  <span>📍</span>
+                  <span className="flex-1 text-sm font-medium" style={{ color: '#2D5A3D' }}>
+                    {locationData.lat.toFixed(4)}, {locationData.lng.toFixed(4)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setLocationData(null)}
+                    className="text-sm"
+                    style={{ color: '#7A7268' }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={submitting || uploadingPhoto || gettingLocation}
+                  onClick={async () => {
+                    setGettingLocation(true)
+                    try {
+                      const pos = await new Promise<GeolocationPosition>((res, rej) =>
+                        navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000 })
+                      )
+                      setLocationData({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+                    } catch {
+                      setSubmitError('Could not get location. Check browser permissions.')
+                    }
+                    setGettingLocation(false)
+                  }}
+                  className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all active:scale-95 disabled:opacity-40"
+                  style={{ background: '#F8F5F0', border: '1.5px solid #E8E2D9', color: '#7A7268' }}
+                >
+                  <span>📍</span>
+                  <span>{gettingLocation ? 'Getting location…' : 'Pin your location'}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Song link */}
+            <div>
+              <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: '#C9BFA8' }}>
+                Song (Spotify)
+              </p>
+              {songURL ? (
+                <div className="flex items-center gap-2 rounded-xl px-4 py-2.5"
+                  style={{ background: '#E8F0E9', border: '1.5px solid #8FAF8A' }}>
+                  <span>🎵</span>
+                  <span className="flex-1 text-sm font-medium truncate" style={{ color: '#2D5A3D' }}>
+                    {songURL.replace('https://open.spotify.com/', '')}
+                  </span>
+                  <button type="button" onClick={() => { setSongURL(null); setSongInput('') }}
+                    className="text-sm shrink-0" style={{ color: '#7A7268' }}>×</button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={songInput}
+                    onChange={(e) => setSongInput(e.target.value)}
+                    placeholder="https://open.spotify.com/track/…"
+                    disabled={submitting}
+                    className="flex-1 rounded-xl px-4 py-2.5 text-sm focus:outline-none disabled:opacity-50"
+                    style={{ border: '1.5px solid #E8E2D9', background: '#F8F5F0', color: '#1A1A16' }}
+                  />
+                  <button
+                    type="button"
+                    disabled={!songInput.trim() || submitting}
+                    onClick={() => {
+                      const parsed = parseSpotifyURL(songInput.trim())
+                      if (parsed) { setSongURL(parsed); setSongInput('') }
+                      else setSubmitError('Paste a valid Spotify track, album, or playlist link.')
+                    }}
+                    className="rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-40"
+                    style={{ background: '#2D5A3D', color: '#fff' }}
+                  >
+                    Add
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Sketch pad */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] tracking-[0.15em] uppercase" style={{ color: '#C9BFA8' }}>
+                  Drawing
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setShowSketch((v) => !v); setSketchBlob(null) }}
+                  disabled={submitting}
+                  className="text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
+                  style={{
+                    background: showSketch ? '#E8F0E9' : '#F8F5F0',
+                    border: `1px solid ${showSketch ? '#8FAF8A' : '#E8E2D9'}`,
+                    color: showSketch ? '#2D5A3D' : '#7A7268',
+                  }}
+                >
+                  {showSketch ? '✕ Hide' : '✏️ Draw'}
+                </button>
+              </div>
+              {showSketch && (
+                <SketchPad
+                  onBlob={setSketchBlob}
+                  disabled={submitting || uploadingPhoto}
+                />
+              )}
+              {sketchBlob && !showSketch && (
+                <p className="text-[11px]" style={{ color: '#2D5A3D' }}>✓ Drawing attached</p>
+              )}
+            </div>
+
             {submitError && (
               <p className="text-xs" style={{ color: '#B85C38' }}>
                 {submitError}
@@ -662,6 +1214,68 @@ export default function HomePage() {
           </div>
         )}
       </main>
+
+      {/* Pinned fridge note — visible in all states */}
+      {userDoc?.pairId && (
+        <div
+          className="shrink-0 px-5 py-3 border-t"
+          style={{ background: '#F8F5F0', borderColor: '#E8E2D4' }}
+        >
+          {editingNote ? (
+            <div className="flex flex-col gap-2">
+              <textarea
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value.slice(0, 200))}
+                placeholder="Leave a note for both of you..."
+                rows={2}
+                autoFocus
+                className="w-full rounded-lg px-3 py-2 text-sm resize-none focus:outline-none"
+                style={{ border: '1px solid #C9BFA8', background: '#fff', color: '#1A1A16' }}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setEditingNote(false); setNoteText(pairDoc?.pinnedNote ?? '') }}
+                  className="flex-1 rounded-lg py-1.5 text-xs font-medium"
+                  style={{ border: '1px solid #C9BFA8', color: '#7A7268' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={savingNote}
+                  onClick={async () => {
+                    setSavingNote(true)
+                    try {
+                      await updateDoc(doc(db, 'pairs', userDoc.pairId!), {
+                        pinnedNote: noteText.trim() || null,
+                        updatedAt: serverTimestamp(),
+                      })
+                      setEditingNote(false)
+                    } catch (e) { console.error(e) }
+                    setSavingNote(false)
+                  }}
+                  className="flex-1 rounded-lg py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                  style={{ background: '#2D5A3D' }}
+                >
+                  {savingNote ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className="w-full text-left flex items-start gap-2 group"
+              onClick={() => { setNoteText(pairDoc?.pinnedNote ?? ''); setEditingNote(true) }}
+            >
+              <span style={{ fontSize: 16, marginTop: 1 }}>📌</span>
+              <span
+                className="text-sm leading-snug flex-1 group-active:opacity-70"
+                style={{ color: pairDoc?.pinnedNote ? '#1A1A16' : '#C9BFA8' }}
+              >
+                {pairDoc?.pinnedNote ?? 'Leave a note for both of you…'}
+              </span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Bottom nav */}
       <nav
@@ -736,6 +1350,132 @@ export default function HomePage() {
                 </p>
               </div>
             </div>
+
+            {/* Pair name */}
+            {userDoc?.pairId && (
+              <div
+                className="mb-4 rounded-xl px-4 py-3"
+                style={{ background: '#F8F5F0', border: '1px solid #E8E2D4' }}
+              >
+                <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: '#C9BFA8' }}>
+                  What do you call yourselves?
+                </p>
+                {editingPairName ? (
+                  <div className="flex gap-2">
+                    <input
+                      value={pairNameText}
+                      onChange={(e) => setPairNameText(e.target.value.slice(0, 30))}
+                      placeholder="e.g. us, home, ..."
+                      autoFocus
+                      className="flex-1 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+                      style={{ border: '1px solid #C9BFA8', background: '#fff', color: '#1A1A16' }}
+                    />
+                    <button
+                      disabled={savingPairName}
+                      onClick={async () => {
+                        setSavingPairName(true)
+                        try {
+                          await updateDoc(doc(db, 'pairs', userDoc.pairId!), {
+                            pairName: pairNameText.trim() || null,
+                            updatedAt: serverTimestamp(),
+                          })
+                          setEditingPairName(false)
+                        } catch (e) { console.error(e) }
+                        setSavingPairName(false)
+                      }}
+                      className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+                      style={{ background: '#2D5A3D' }}
+                    >
+                      {savingPairName ? '…' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => setEditingPairName(false)}
+                      className="rounded-lg px-2 py-1.5 text-sm"
+                      style={{ color: '#7A7268' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="w-full text-left"
+                    onClick={() => { setPairNameText(pairDoc?.pairName ?? ''); setEditingPairName(true) }}
+                  >
+                    <span className="text-sm" style={{ color: pairDoc?.pairName ? '#1A1A16' : '#C9BFA8' }}>
+                      {pairDoc?.pairName ?? 'Set a name…'}
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Daily reminder */}
+            {user && (
+              <div
+                className="mb-4 rounded-xl px-4 py-3"
+                style={{ background: '#F8F5F0', border: '1px solid #E8E2D4' }}
+              >
+                <p className="text-[10px] tracking-[0.15em] uppercase mb-2" style={{ color: '#C9BFA8' }}>
+                  Daily reminder
+                </p>
+                {userDoc?.reminderTime ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm flex-1" style={{ color: '#1A1A16' }}>
+                      🔔 {formatHour(userDoc.reminderTime.hour)} every day
+                    </span>
+                    <button
+                      disabled={savingReminder}
+                      onClick={async () => {
+                        setSavingReminder(true)
+                        try {
+                          await updateDoc(doc(db, 'users', user.uid), {
+                            reminderTime: null,
+                            updatedAt: serverTimestamp(),
+                          })
+                        } catch (e) { console.error(e) }
+                        setSavingReminder(false)
+                      }}
+                      className="text-xs px-2.5 py-1 rounded-lg"
+                      style={{ border: '1px solid #C9BFA8', color: '#7A7268' }}
+                    >
+                      {savingReminder ? '…' : 'Turn off'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="time"
+                      value={reminderInput}
+                      onChange={(e) => setReminderInput(e.target.value)}
+                      className="flex-1 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+                      style={{ border: '1px solid #C9BFA8', background: '#fff', color: '#1A1A16' }}
+                    />
+                    <button
+                      disabled={!reminderInput || savingReminder}
+                      onClick={async () => {
+                        const hour = parseInt(reminderInput.split(':')[0], 10)
+                        if (isNaN(hour)) return
+                        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+                        setSavingReminder(true)
+                        try {
+                          await updateDoc(doc(db, 'users', user.uid), {
+                            reminderTime: { hour, tz },
+                            updatedAt: serverTimestamp(),
+                          })
+                          setReminderInput('')
+                        } catch (e) { console.error(e) }
+                        setSavingReminder(false)
+                      }}
+                      className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
+                      style={{ background: '#2D5A3D' }}
+                    >
+                      {savingReminder ? '…' : 'Set'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               onClick={async () => {
                 setShowSignOutConfirm(false)
@@ -753,6 +1493,60 @@ export default function HomePage() {
             >
               Cancel
             </button>
+
+            {/* Leave pair */}
+            {userDoc?.pairId && (
+              <div className="mt-4 pt-4" style={{ borderTop: '1px solid #F0EBE0' }}>
+                {!showLeaveConfirm ? (
+                  <button
+                    onClick={() => { setShowLeaveConfirm(true); setLeaveError(null) }}
+                    className="w-full text-xs py-2 transition-colors"
+                    style={{ color: '#C9BFA8' }}
+                  >
+                    Leave pair
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-xs text-center leading-relaxed" style={{ color: '#7A7268' }}>
+                      Both of you will lose access to this pair.{' '}
+                      <button
+                        onClick={() => { setShowSignOutConfirm(false); window.location.href = '/export' }}
+                        className="underline"
+                        style={{ color: '#2D5A3D' }}
+                      >
+                        Export your journal first.
+                      </button>
+                    </p>
+                    {leaveError && <p className="text-xs text-center" style={{ color: '#B85C38' }}>{leaveError}</p>}
+                    <button
+                      disabled={leaving}
+                      onClick={async () => {
+                        setLeaving(true)
+                        setLeaveError(null)
+                        try {
+                          await leavePairFn({})
+                        } catch (e: unknown) {
+                          setLeaveError(e instanceof Error ? e.message : 'Failed to leave')
+                          setLeaving(false)
+                        }
+                        // pairId → null triggers App.tsx redirect to /pair-setup automatically
+                      }}
+                      className="w-full rounded-lg py-2.5 text-sm font-medium border disabled:opacity-50"
+                      style={{ borderColor: '#FAD4CA', color: '#B85C38' }}
+                    >
+                      {leaving ? 'Leaving…' : 'I understand — leave pair'}
+                    </button>
+                    <button
+                      onClick={() => setShowLeaveConfirm(false)}
+                      className="w-full py-2 text-xs"
+                      style={{ color: '#C9BFA8' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

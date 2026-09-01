@@ -34,15 +34,25 @@ service cloud.firestore {
       allow read: if request.auth != null
         && request.auth.uid in resource.data.members;
 
-      // All writes go through Cloud Functions only — never from the client.
-      allow write: if false;
+      // Members can update pinnedNote only — no other fields writable from client.
+      allow update: if request.auth != null
+        && request.auth.uid in resource.data.members
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pinnedNote', 'pairName', 'updatedAt']);
+
+      // All other writes go through Cloud Functions only.
+      allow create, delete: if false;
     }
 
     // Phase 3: Entry metadata — readable by both pair members; no client writes (SEC-02)
     match /pairs/{pairId}/entries/{entryDate} {
       allow read: if request.auth != null
         && request.auth.uid in get(/databases/$(database)/documents/pairs/$(pairId)).data.members;
-      allow write: if false;
+
+      // Members can toggle their own favorite on a revealed entry (favoritedBy array only).
+      allow update: if request.auth != null
+        && request.auth.uid in get(/databases/$(database)/documents/pairs/$(pairId)).data.members
+        && resource.data.status == 'revealed'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favoritedBy', 'updatedAt']);
 
       // Phase 3: Submission content — owner reads always; partner reads only after reveal (SEC-01, SUBM-05)
       match /submissions/{uid} {
@@ -54,6 +64,13 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/pairs/$(pairId)/entries/$(entryDate)).data.status == 'revealed';
         allow write: if false;
       }
+    }
+
+    // Weekly/monthly summary cards — read-only for pair members; written only by CF
+    match /pairs/{pairId}/summaries/{summaryId} {
+      allow read: if request.auth != null
+        && request.auth.uid in get(/databases/$(database)/documents/pairs/$(pairId)).data.members;
+      allow write: if false;
     }
 
     // All other paths are denied until later phases add explicit rules.

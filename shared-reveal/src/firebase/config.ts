@@ -19,6 +19,8 @@ import {
 } from 'firebase/firestore'
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions'
 import { getStorage, connectStorageEmulator } from 'firebase/storage'
+import { getMessaging, isSupported } from 'firebase/messaging'
+import type { Messaging } from 'firebase/messaging'
 // App Check disabled until Phase 6 security hardening (reCAPTCHA site key not yet configured)
 // import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 
@@ -46,6 +48,17 @@ export const db = initializeFirestore(app, {
 export const functions = getFunctions(app)
 
 export const storage = getStorage(app)
+
+// FCM messaging — not available in all environments (Node.js, old browsers).
+// Returns null when unsupported; callers must handle null.
+let _messaging: Messaging | null = null
+export async function getMessagingInstance(): Promise<Messaging | null> {
+  if (_messaging) return _messaging
+  const supported = await isSupported()
+  if (!supported) return null
+  _messaging = getMessaging(app)
+  return _messaging
+}
 
 // Connect to local emulators when the env var is set.
 // VITE_FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099

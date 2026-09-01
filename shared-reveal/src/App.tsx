@@ -14,17 +14,21 @@
 import { Navigate, Routes, Route } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { usePairId } from './hooks/usePair'
+import { useNotifications } from './hooks/useNotifications'
 import LandingPage from './pages/LandingPage'
 import HomePage from './pages/HomePage'
 import PairSetupPage from './pages/PairSetupPage'
 import TimelinePage from './pages/TimelinePage'
+import ExportPage from './pages/ExportPage'
 import OfflineBanner from './components/OfflineBanner'
 import IOSInstallBanner from './components/IOSInstallBanner'
 import UpdateBanner from './components/UpdateBanner'
+import ForegroundMessageToast from './components/ForegroundMessageToast'
 
 export default function App() {
   const { user, loading } = useAuth()
   const { pairId, pairLoading } = usePairId(user?.uid ?? null)
+  const { foregroundMessage, clearForegroundMessage } = useNotifications(user?.uid ?? null)
 
   // Hold rendering until both auth state and pair state are known.
   // pairLoading is only relevant when signed in (usePairId returns false immediately for null uid).
@@ -38,6 +42,7 @@ export default function App() {
 
   return (
     <>
+      <ForegroundMessageToast message={foregroundMessage} onDismiss={clearForegroundMessage} />
       <UpdateBanner />
       <OfflineBanner />
       <IOSInstallBanner />
@@ -72,6 +77,12 @@ export default function App() {
         <Route
           path="/timeline"
           element={user ? <TimelinePage /> : <Navigate to="/" replace />}
+        />
+
+        {/* /export — journal PDF export, paired only */}
+        <Route
+          path="/export"
+          element={user ? <ExportPage /> : <Navigate to="/" replace />}
         />
       </Routes>
     </>

@@ -1,8 +1,10 @@
 import { initializeApp } from 'firebase-admin/app'
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore'
+import { getMessaging } from 'firebase-admin/messaging'
 import { user } from 'firebase-functions/v1/auth'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { onDocumentWritten } from 'firebase-functions/v2/firestore'
+import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { z } from 'zod'
 
 // Must be set before initializeApp() so Admin SDK routes to Firestore emulator.
@@ -11,6 +13,38 @@ if (process.env.FUNCTIONS_EMULATOR) {
 }
 
 initializeApp({ projectId: process.env.GCLOUD_PROJECT ?? 'birds-eye-c09ff' })
+
+// Best-effort push notification — never throws, never blocks the caller's response.
+async function sendPush(token: string, title: string, body: string): Promise<void> {
+  try {
+    await getMessaging().send({
+      token,
+      notification: { title, body },
+      webpush: {
+        notification: {
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-192.png',
+        },
+        fcmOptions: { link: '/home' },
+      },
+    })
+  } catch (err: unknown) {
+    // Stale / invalid token — remove it so we don't waste FCM quota on future sends
+    const code = (err as { code?: string }).code
+    if (code === 'messaging/registration-token-not-registered' ||
+        code === 'messaging/invalid-registration-token') {
+      console.warn('[sendPush] stale token, clearing:', token.slice(0, 20))
+    } else {
+      console.warn('[sendPush] failed:', err)
+    }
+  }
+}
+
+// Fetch fcmToken for a uid (null if not set or user doc missing)
+async function getToken(db: ReturnType<typeof getFirestore>, uid: string): Promise<string | null> {
+  const snap = await db.doc(`users/${uid}`).get()
+  return (snap.data()?.fcmToken as string | null) ?? null
+}
 
 /**
  * Writes the users/{uid} Firestore document when a new Firebase Auth user is created.
@@ -31,6 +65,9 @@ export const createUserDoc = user().onCreate(async (userRecord) => {
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
       pairId: null,
+      fcmToken: null,
+      reminderTime: null,
+      lastDissolvedAt: null,
     })
     console.log('[createUserDoc] wrote users/' + userRecord.uid)
   } catch (err) {
@@ -49,12 +86,17 @@ const SubmitEntrySchema = z
     entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     text: z.string().max(500).nullable(),
     photoURL: z.url().nullable(),
+    audioURL: z.url().nullable().optional(),
+    mood: z.string().max(20).nullable().optional(),
+    location: z.object({ lat: z.number(), lng: z.number() }).nullable().optional(),
+    songURL: z.string().url().regex(/^https:\/\/open\.spotify\.com\/(track|album|playlist|episode)\/[A-Za-z0-9]+/).nullable().optional(),
+    sketchURL: z.url().nullable().optional(),
   })
   .superRefine((data, ctx) => {
-    if (!data.photoURL && !data.text?.trim()) {
+    if (!data.photoURL && !data.text?.trim() && !data.audioURL && !data.location && !data.songURL && !data.sketchURL) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'At least one of photo or text is required',
+        message: 'At least one of photo, text, audio, location, song, or sketch is required',
         path: ['photoURL'],
       })
     }
@@ -92,6 +134,13 @@ export const createPair = onCall(callableOptions, async (request) => {
     }
     if (userSnap.data()!.pairId !== null) {
       throw new HttpsError('already-exists', 'You are already in a pair')
+    }
+    const lastDissolved = userSnap.data()!.lastDissolvedAt as Timestamp | null
+    if (lastDissolved) {
+      const hoursSince = (Date.now() - lastDissolved.toMillis()) / 3_600_000
+      if (hoursSince < 24) {
+        throw new HttpsError('failed-precondition', 'Wait 24 hours before starting a new pair')
+      }
     }
 
     tx.set(pairRef, {
@@ -173,6 +222,13 @@ export const joinPair = onCall(callableOptions, async (request) => {
     if (joinerSnap.data()!.pairId !== null) {
       throw new HttpsError('already-exists', 'You are already in a pair')
     }
+    const joinerLastDissolved = joinerSnap.data()!.lastDissolvedAt as Timestamp | null
+    if (joinerLastDissolved) {
+      const hoursSince = (Date.now() - joinerLastDissolved.toMillis()) / 3_600_000
+      if (hoursSince < 24) {
+        throw new HttpsError('failed-precondition', 'Wait 24 hours before joining a new pair')
+      }
+    }
 
     // ALL WRITES — all conditions passed
     const creatorRef = db.doc(`users/${pair.createdBy}`)
@@ -208,7 +264,7 @@ export const submitEntry = onCall(callableOptions, async (request) => {
     throw new HttpsError('invalid-argument', 'Invalid submission data')
   }
 
-  const { entryDate, text, photoURL } = parsed.data
+  const { entryDate, text, photoURL, audioURL = null, mood = null, location = null, songURL = null, sketchURL = null } = parsed.data
   const uid = request.auth.uid
   const db = getFirestore()
   const userRef = db.doc(`users/${uid}`)
@@ -247,20 +303,28 @@ export const submitEntry = onCall(callableOptions, async (request) => {
       tx.set(submissionRef, {
         uid,
         photoURLs: photoURL ? [photoURL] : [],
+        audioURLs: audioURL ? [audioURL] : [],
         texts: text ? [text] : [],
+        mood: mood ?? null,
+        location: location ?? null,
+        songURL: songURL ?? null,
+        sketchURL: sketchURL ?? null,
         submittedAt: FieldValue.serverTimestamp(),
       })
     } else {
-      // Migrate v1 doc if needed, then append
       const existing = submissionSnap.data()!
-      const existingPhotos: string[] = existing.photoURLs ??
-        (existing.photoURL ? [existing.photoURL] : [])
-      const existingTexts: string[] = existing.texts ??
-        (existing.text ? [existing.text] : [])
+      const existingPhotos: string[] = existing.photoURLs ?? (existing.photoURL ? [existing.photoURL] : [])
+      const existingAudios: string[] = existing.audioURLs ?? []
+      const existingTexts: string[] = existing.texts ?? (existing.text ? [existing.text] : [])
       tx.set(submissionRef, {
         uid,
         photoURLs: photoURL ? [...existingPhotos, photoURL] : existingPhotos,
+        audioURLs: audioURL ? [...existingAudios, audioURL] : existingAudios,
         texts: text ? [...existingTexts, text] : existingTexts,
+        mood: mood ?? existing.mood ?? null,
+        location: location ?? existing.location ?? null,
+        songURL: songURL ?? existing.songURL ?? null,
+        sketchURL: sketchURL ?? existing.sketchURL ?? null,
         photoURL: null,
         text: null,
         submittedAt: existing.submittedAt ?? FieldValue.serverTimestamp(),
@@ -290,6 +354,24 @@ export const submitEntry = onCall(callableOptions, async (request) => {
     }
   })
 
+  // Notify partner (best-effort, outside transaction so it never blocks the response)
+  try {
+    const db2 = getFirestore()
+    const userSnap2 = await db2.doc(`users/${uid}`).get()
+    const pairId2: string = userSnap2.data()!.pairId
+    const pairSnap2 = await db2.doc(`pairs/${pairId2}`).get()
+    const members2: string[] = pairSnap2.data()!.members ?? []
+    const partnerId = members2.find((m) => m !== uid)
+    if (partnerId) {
+      const partnerToken = await getToken(db2, partnerId)
+      if (partnerToken) {
+        await sendPush(partnerToken, 'Bird Eye', 'Your partner shared something today 🌿')
+      }
+    }
+  } catch (err) {
+    console.warn('[submitEntry] notification failed:', err)
+  }
+
   return { entryDate, alreadySubmitted: isResubmission }
 })
 
@@ -309,12 +391,16 @@ export const autoReveal = onDocumentWritten(
     const db = getFirestore()
     const entryRef = db.doc(`pairs/${pairId}/entries/${entryDate}`)
 
+    let didReveal = false
+    let memberUids: string[] = []
+
     await db.runTransaction(async (tx) => {
       const entrySnap = await tx.get(entryRef)
       if (!entrySnap.exists) return
       const entry = entrySnap.data()!
       // Guard: only reveal when 2 members submitted and not already revealed
-      if ((entry.submittedMembers ?? []).length < 2) return
+      memberUids = entry.submittedMembers ?? []
+      if (memberUids.length < 2) return
       if (entry.status === 'revealed') return
 
       tx.update(entryRef, {
@@ -324,7 +410,18 @@ export const autoReveal = onDocumentWritten(
         revealedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       })
+      didReveal = true
     })
+
+    // Notify both members (best-effort)
+    if (didReveal && memberUids.length === 2) {
+      await Promise.allSettled(
+        memberUids.map(async (memberId) => {
+          const token = await getToken(db, memberId)
+          if (token) await sendPush(token, 'Bird Eye', "Both of you shared today — it's revealed! 🌿")
+        })
+      )
+    }
   }
 )
 
@@ -374,6 +471,454 @@ export const revealAnyway = onCall(callableOptions, async (request) => {
     })
   })
 
+  // Notify partner (best-effort)
+  try {
+    const db2 = getFirestore()
+    const userSnap2 = await db2.doc(`users/${uid}`).get()
+    const pairId2: string = userSnap2.data()!.pairId
+    const pairSnap2 = await db2.doc(`pairs/${pairId2}`).get()
+    const members2: string[] = pairSnap2.data()!.members ?? []
+    const partnerId = members2.find((m) => m !== uid)
+    if (partnerId) {
+      const partnerToken = await getToken(db2, partnerId)
+      if (partnerToken) {
+        await sendPush(partnerToken, 'Bird Eye', 'Your partner revealed — come see what they shared 🌿')
+      }
+    }
+  } catch (err) {
+    console.warn('[revealAnyway] notification failed:', err)
+  }
+
   return { entryDate, revealed: true }
+})
+
+const ReactToEntrySchema = z.object({
+  entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  emoji: z.string().max(8),
+})
+
+/**
+ * Sets or clears the calling user's emoji reaction on a revealed entry.
+ * Empty string emoji clears the reaction.
+ */
+export const reactToEntry = onCall(callableOptions, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Must be signed in')
+  const parsed = ReactToEntrySchema.safeParse(request.data)
+  if (!parsed.success) throw new HttpsError('invalid-argument', 'Invalid input')
+
+  const { entryDate, emoji } = parsed.data
+  const uid = request.auth.uid
+  const db = getFirestore()
+
+  const userSnap = await db.doc(`users/${uid}`).get()
+  if (!userSnap.exists) throw new HttpsError('not-found', 'User not found')
+  const pairId: string = userSnap.data()!.pairId
+  if (!pairId) throw new HttpsError('failed-precondition', 'Not in a pair')
+
+  const entryRef = db.doc(`pairs/${pairId}/entries/${entryDate}`)
+  const entrySnap = await entryRef.get()
+  if (!entrySnap.exists) throw new HttpsError('not-found', 'Entry not found')
+  if (entrySnap.data()!.status !== 'revealed') {
+    throw new HttpsError('failed-precondition', 'Entry not yet revealed')
+  }
+
+  if (emoji) {
+    await entryRef.update({ [`reactions.${uid}`]: emoji, updatedAt: FieldValue.serverTimestamp() })
+  } else {
+    // Empty string = clear reaction (use FieldValue.delete())
+    await entryRef.update({ [`reactions.${uid}`]: FieldValue.delete(), updatedAt: FieldValue.serverTimestamp() })
+  }
+
+  return { entryDate, emoji }
+})
+
+/**
+ * Sends a "thinking of you" ping to the partner — writes to pair doc + FCM push.
+ * Rate-limited by the client (30s cooldown enforced in UI).
+ */
+export const sendPing = onCall(callableOptions, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Must be signed in')
+  const uid = request.auth.uid
+  const db = getFirestore()
+
+  const userSnap = await db.doc(`users/${uid}`).get()
+  if (!userSnap.exists) throw new HttpsError('not-found', 'User not found')
+  const pairId: string = userSnap.data()!.pairId
+  if (!pairId) throw new HttpsError('failed-precondition', 'Not in a pair')
+
+  await db.doc(`pairs/${pairId}`).update({
+    lastPing: { from: uid, at: FieldValue.serverTimestamp() },
+    updatedAt: FieldValue.serverTimestamp(),
+  })
+
+  // Notify partner
+  const pairSnap = await db.doc(`pairs/${pairId}`).get()
+  const members: string[] = pairSnap.data()!.members ?? []
+  const partnerId = members.find((m) => m !== uid)
+  if (partnerId) {
+    const partnerToken = await getToken(db, partnerId)
+    if (partnerToken) await sendPush(partnerToken, 'Bird Eye', '💭 Thinking of you')
+  }
+
+  return { sent: true }
+})
+
+const MILESTONES: Record<number, string> = {
+  1:   '🌿 First reveal! You started something.',
+  10:  '✨ 10 reveals — still showing up.',
+  50:  '🌱 50 reveals. This is becoming something real.',
+  100: '🎉 100 reveals together. You built this.',
+  365: '🌳 365 reveals. A full year of this.',
+}
+
+/**
+ * Fires FCM milestone notifications when the revealed entry count crosses
+ * a threshold for the first time. Idempotent — tracks fired milestones on pair doc.
+ */
+export const checkMilestones = onDocumentWritten(
+  'pairs/{pairId}/entries/{entryDate}',
+  async (event) => {
+    const after = event.data?.after
+    if (!after?.exists) return
+    if (after.data()?.status !== 'revealed') return
+
+    const { pairId } = event.params
+    const db = getFirestore()
+    const pairRef = db.doc(`pairs/${pairId}`)
+
+    const pairSnap = await pairRef.get()
+    if (!pairSnap.exists) return
+    const pair = pairSnap.data()!
+    const alreadyFired: string[] = pair.milestonesFired ?? []
+
+    // Count all revealed entries for this pair
+    const revealedSnap = await db
+      .collection(`pairs/${pairId}/entries`)
+      .where('status', '==', 'revealed')
+      .count()
+      .get()
+    const count = revealedSnap.data().count
+
+    const newMilestones = Object.keys(MILESTONES)
+      .map(Number)
+      .filter((n) => count >= n && !alreadyFired.includes(String(n)))
+
+    if (!newMilestones.length) return
+
+    // Mark all new milestones as fired atomically
+    await pairRef.update({
+      milestonesFired: FieldValue.arrayUnion(...newMilestones.map(String)),
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+
+    // Notify both members with the highest milestone message
+    const highestMilestone = Math.max(...newMilestones)
+    const message = MILESTONES[highestMilestone]
+    const members: string[] = pair.members ?? []
+
+    await Promise.allSettled(
+      members.map(async (uid) => {
+        const token = await getToken(db, uid)
+        if (token) await sendPush(token, 'Bird Eye', message)
+      })
+    )
+  }
+)
+
+// ── Summaries ────────────────────────────────────────────────────────────────
+
+async function generateSummary(type: 'weekly' | 'monthly'): Promise<void> {
+  const db = getFirestore()
+  const now = new Date()
+
+  let startDate: string
+  let endDate: string
+  let periodKey: string
+  let label: string
+  let pushTitle: string
+
+  if (type === 'weekly') {
+    const thisMonday = new Date(now.valueOf())
+    thisMonday.setDate(now.getDate() + (now.getDay() === 0 ? -6 : 1 - now.getDay()))
+    const prevMonday = new Date(thisMonday.valueOf())
+    prevMonday.setDate(thisMonday.getDate() - 7)
+    const prevSunday = new Date(thisMonday.valueOf())
+    prevSunday.setDate(thisMonday.getDate() - 1)
+    startDate = prevMonday.toISOString().slice(0, 10)
+    endDate = prevSunday.toISOString().slice(0, 10)
+    periodKey = `weekly-${startDate}`
+    label = 'last week'
+    pushTitle = '📅 Weekly summary'
+  } else {
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const y = prevMonth.getFullYear()
+    const m = String(prevMonth.getMonth() + 1).padStart(2, '0')
+    startDate = `${y}-${m}-01`
+    const lastDay = new Date(now.getFullYear(), now.getMonth(), 0).getDate()
+    endDate = `${y}-${m}-${String(lastDay).padStart(2, '0')}`
+    periodKey = `monthly-${y}-${m}`
+    label = prevMonth.toLocaleString('en-US', { month: 'long' })
+    pushTitle = '🗓️ Monthly summary'
+  }
+
+  const pairsSnap = await db.collection('pairs').get()
+
+  await Promise.allSettled(
+    pairsSnap.docs.map(async (pairDoc) => {
+      const pair = pairDoc.data()
+      const members: string[] = pair.members ?? []
+      if (members.length !== 2) return
+
+      const countSnap = await db
+        .collection(`pairs/${pairDoc.id}/entries`)
+        .where('status', '==', 'revealed')
+        .where('date', '>=', startDate)
+        .where('date', '<=', endDate)
+        .count()
+        .get()
+
+      const revealCount: number = countSnap.data().count
+      if (revealCount === 0) return
+
+      await db.doc(`pairs/${pairDoc.id}/summaries/${periodKey}`).set({
+        type,
+        period: periodKey,
+        label,
+        revealCount,
+        createdAt: FieldValue.serverTimestamp(),
+      })
+
+      const body = revealCount === 1
+        ? `1 reveal ${label}`
+        : `${revealCount} reveals ${label}`
+
+      await Promise.allSettled(
+        members.map(async (uid) => {
+          const token = await getToken(db, uid)
+          if (token) await sendPush(token, pushTitle, body)
+        })
+      )
+    })
+  )
+}
+
+// ── Leave pair ────────────────────────────────────────────────────────────────
+
+export const leavePair = onCall(callableOptions, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Not signed in')
+  const uid = request.auth.uid
+  const db = getFirestore()
+
+  const userRef = db.doc(`users/${uid}`)
+  const userSnap = await userRef.get()
+  if (!userSnap.exists) throw new HttpsError('not-found', 'User not found')
+
+  const pairId: string | null = userSnap.data()?.pairId ?? null
+  if (!pairId) throw new HttpsError('failed-precondition', 'Not in a pair')
+
+  const pairRef = db.doc(`pairs/${pairId}`)
+  const pairSnap = await pairRef.get()
+  if (!pairSnap.exists) throw new HttpsError('not-found', 'Pair not found')
+
+  const members: string[] = pairSnap.data()?.members ?? []
+  const partnerId = members.find((m) => m !== uid) ?? null
+
+  await db.runTransaction(async (tx) => {
+    tx.update(pairRef, {
+      dissolvedAt: FieldValue.serverTimestamp(),
+      dissolvedBy: uid,
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+    tx.update(userRef, {
+      pairId: null,
+      lastDissolvedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    })
+    if (partnerId) {
+      tx.update(db.doc(`users/${partnerId}`), {
+        pairId: null,
+        lastDissolvedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      })
+    }
+  })
+
+  if (partnerId) {
+    const token = await getToken(db, partnerId)
+    if (token) await sendPush(token, '🌿 Bird Eye', 'Your partner has left the pair.')
+  }
+
+  return { success: true }
+})
+
+// ── Entry deletion (mutual consent) ──────────────────────────────────────────
+
+const EntryDateSchema = z.object({ entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })
+
+export const requestEntryDeletion = onCall(callableOptions, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Not signed in')
+  const uid = request.auth.uid
+  const parsed = EntryDateSchema.safeParse(request.data)
+  if (!parsed.success) throw new HttpsError('invalid-argument', 'Invalid data')
+
+  const { entryDate } = parsed.data
+  const db = getFirestore()
+
+  const userSnap = await db.doc(`users/${uid}`).get()
+  const pairId: string | null = userSnap.data()?.pairId ?? null
+  if (!pairId) throw new HttpsError('failed-precondition', 'Not in a pair')
+
+  const entryRef = db.doc(`pairs/${pairId}/entries/${entryDate}`)
+  const entrySnap = await entryRef.get()
+  if (!entrySnap.exists) throw new HttpsError('not-found', 'Entry not found')
+
+  const entry = entrySnap.data()!
+  if (entry.status !== 'revealed') throw new HttpsError('failed-precondition', 'Entry not revealed')
+  if (entry.deletionRequest) throw new HttpsError('already-exists', 'Deletion already requested')
+
+  await entryRef.update({
+    deletionRequest: { requestedBy: uid, requestedAt: FieldValue.serverTimestamp() },
+    updatedAt: FieldValue.serverTimestamp(),
+  })
+
+  const pairData = (await db.doc(`pairs/${pairId}`).get()).data()
+  const partnerId = (pairData?.members as string[] ?? []).find((m) => m !== uid)
+  if (partnerId) {
+    const token = await getToken(db, partnerId)
+    if (token) await sendPush(token, '🌿 Bird Eye', 'Your partner wants to delete a shared entry.')
+  }
+
+  return { entryDate }
+})
+
+export const respondEntryDeletion = onCall(callableOptions, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Not signed in')
+  const uid = request.auth.uid
+  const parsed = z.object({
+    entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    accept: z.boolean(),
+  }).safeParse(request.data)
+  if (!parsed.success) throw new HttpsError('invalid-argument', 'Invalid data')
+
+  const { entryDate, accept } = parsed.data
+  const db = getFirestore()
+
+  const userSnap = await db.doc(`users/${uid}`).get()
+  const pairId: string | null = userSnap.data()?.pairId ?? null
+  if (!pairId) throw new HttpsError('failed-precondition', 'Not in a pair')
+
+  const entryRef = db.doc(`pairs/${pairId}/entries/${entryDate}`)
+  const entrySnap = await entryRef.get()
+  if (!entrySnap.exists) throw new HttpsError('not-found', 'Entry not found')
+
+  const entry = entrySnap.data()!
+  if (!entry.deletionRequest) throw new HttpsError('failed-precondition', 'No deletion request')
+  if (entry.deletionRequest.requestedBy === uid) {
+    throw new HttpsError('failed-precondition', 'Cannot respond to your own request')
+  }
+
+  const requesterId: string = entry.deletionRequest.requestedBy
+
+  if (!accept) {
+    await entryRef.update({ deletionRequest: null, updatedAt: FieldValue.serverTimestamp() })
+    const token = await getToken(db, requesterId)
+    if (token) await sendPush(token, '🌿 Bird Eye', 'Your deletion request was declined.')
+    return { entryDate, deleted: false }
+  }
+
+  // Accepted — delete submissions then entry doc
+  const pairSnap = await db.doc(`pairs/${pairId}`).get()
+  const members: string[] = pairSnap.data()?.members ?? []
+  const batch = db.batch()
+  for (const memberId of members) {
+    batch.delete(entryRef.collection('submissions').doc(memberId))
+  }
+  batch.delete(entryRef)
+  await batch.commit()
+
+  // Best-effort Storage cleanup
+  try {
+    const { getStorage } = await import('firebase-admin/storage')
+    await getStorage().bucket().deleteFiles({ prefix: `pairs/${pairId}/entries/${entryDate}/` })
+  } catch (err) {
+    console.warn('[respondEntryDeletion] storage cleanup partial:', err)
+  }
+
+  const token = await getToken(db, requesterId)
+  if (token) await sendPush(token, '🌿 Bird Eye', 'The entry has been deleted.')
+
+  return { entryDate, deleted: true }
+})
+
+// Every Monday at 9 am UTC — summarises the previous Mon–Sun week
+export const weeklySummary = onSchedule('0 9 * * 1', async () => {
+  await generateSummary('weekly')
+})
+
+// 1st of every month at 9 am UTC — summarises the previous calendar month
+export const monthlySummary = onSchedule('0 9 1 * *', async () => {
+  await generateSummary('monthly')
+})
+
+// ── Daily reminder ────────────────────────────────────────────────────────────
+
+// Runs every hour on the hour. For each user with a reminderTime set,
+// checks if the current hour in their timezone matches — and pushes a
+// reminder if they haven't submitted today.
+export const dailyReminder = onSchedule('0 * * * *', async () => {
+  const db = getFirestore()
+  const now = new Date()
+
+  const usersSnap = await db.collection('users')
+    .where('reminderTime', '!=', null)
+    .get()
+
+  await Promise.allSettled(
+    usersSnap.docs.map(async (userSnap) => {
+      const data = userSnap.data()
+      const rt = data.reminderTime as { hour: number; tz: string } | null
+      if (!rt || rt.hour == null || !rt.tz) return
+
+      // Resolve user's current local hour
+      let userHour: number
+      try {
+        const parts = new Intl.DateTimeFormat('en-US', {
+          timeZone: rt.tz,
+          hour: 'numeric',
+          hour12: false,
+          hourCycle: 'h23',
+        }).formatToParts(now)
+        userHour = parseInt(parts.find((p) => p.type === 'hour')?.value ?? '-1', 10)
+      } catch {
+        return // invalid timezone stored — skip
+      }
+      if (userHour !== rt.hour) return
+
+      // Resolve user's today date string (YYYY-MM-DD) in their timezone
+      const todayInTz = new Intl.DateTimeFormat('en-CA', {
+        timeZone: rt.tz,
+      }).format(now)
+
+      const uid = userSnap.id
+      const pairId: string | null = data.pairId ?? null
+      if (!pairId) return
+
+      // Skip if already submitted today
+      const entrySnap = await db.doc(`pairs/${pairId}/entries/${todayInTz}`).get()
+      if (entrySnap.exists) {
+        const submitted: string[] = entrySnap.data()?.submittedMembers ?? []
+        if (submitted.includes(uid)) return
+      }
+
+      const token: string | null = data.fcmToken ?? null
+      if (!token) return
+
+      await sendPush(
+        token,
+        '🌿 Bird Eye',
+        "You haven't shared today yet — what reminded you of them?"
+      )
+    })
+  )
 })
 
