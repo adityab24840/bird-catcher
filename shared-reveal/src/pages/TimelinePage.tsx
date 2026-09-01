@@ -8,7 +8,7 @@ import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import { usePairId } from '../hooks/usePair'
 import { useAuth } from '../hooks/useAuth'
 import type { EntryDoc, SubmissionDoc, UserDoc, SummaryDoc } from '../types/index'
-import { reactToEntryFn, requestEntryDeletionFn, respondEntryDeletionFn } from '../services/submissions'
+import { reactToEntryFn, requestEntryDeletionFn, respondEntryDeletionFn, revealAnywayFn } from '../services/submissions'
 import { updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
 
 const MOOD_EMOJIS: Record<string, string> = {
@@ -369,13 +369,22 @@ function DaySection({
   const [subError, setSubError] = useState<string | null>(null)
   const [reacting, setReacting] = useState(false)
   const [deletionWorking, setDeletionWorking] = useState(false)
+  const [revealing, setRevealing] = useState(false)
+
+  const isRevealed = entry.status === 'revealed'
+  const iSubmitted = entry.submittedMembers?.includes(currentUid) ?? false
+  const partnerUid = memberUids.find((u) => u !== currentUid) ?? null
+  const partnerSubmitted = partnerUid ? (entry.submittedMembers?.includes(partnerUid) ?? false) : false
 
   useEffect(() => {
     if (!memberUids.length) return
 
     const subMap: Record<string, SubmissionDoc> = {}
 
-    const unsubs = memberUids.map((uid) =>
+    // When not revealed, only subscribe to own submission (security rules block partner reads)
+    const uidsToLoad = isRevealed ? memberUids : memberUids.filter((u) => u === currentUid)
+
+    const unsubs = uidsToLoad.map((uid) =>
       onSnapshot(
         doc(db, `pairs/${pairId}/entries/${entry.date}/submissions/${uid}`),
         (snap) => {
@@ -394,7 +403,7 @@ function DaySection({
     )
 
     return () => unsubs.forEach((u) => u())
-  }, [pairId, entry.date, memberUids])
+  }, [pairId, entry.date, memberUids, isRevealed, currentUid])
 
   const date = new Date(entry.date + 'T12:00:00')
   const isToday = entry.date === new Date().toLocaleDateString('en-CA')
@@ -452,6 +461,61 @@ function DaySection({
           {submissions.map((sub) => (
             <SubmissionCard key={sub.uid} sub={sub} member={memberDocs[sub.uid]} onPhotoTap={onPhotoTap} />
           ))}
+
+          {/* one_submitted: partner's blurred placeholder + reveal/waiting states */}
+          {!isRevealed && (() => {
+            const partnerMember = partnerUid ? memberDocs[partnerUid] : undefined
+            const partnerName = partnerMember?.displayName?.split(' ')[0] ?? 'Partner'
+            if (partnerSubmitted && !iSubmitted) {
+              // Partner submitted, I haven't — show blurred placeholder + CTA
+              return (
+                <div className="relative rounded-xl overflow-hidden border" style={{ borderColor: '#E8E2D4' }}>
+                  {/* Blurred fake content */}
+                  <div className="px-4 py-3 select-none" style={{ filter: 'blur(6px)', userSelect: 'none', pointerEvents: 'none' }}>
+                    <div className="h-4 rounded mb-2" style={{ background: '#C9BFA8', width: '80%' }} />
+                    <div className="h-4 rounded mb-2" style={{ background: '#C9BFA8', width: '60%' }} />
+                    <div className="h-4 rounded" style={{ background: '#C9BFA8', width: '70%' }} />
+                  </div>
+                  {/* Overlay */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3"
+                    style={{ background: 'rgba(242,237,228,0.75)', backdropFilter: 'blur(2px)' }}>
+                    <p className="text-sm font-semibold" style={{ color: '#1A1A16' }}>
+                      {partnerName} shared something ✓
+                    </p>
+                    <p className="text-xs text-center px-6" style={{ color: '#7A7268' }}>
+                      Add yours to reveal, or reveal now.
+                    </p>
+                    <button
+                      disabled={revealing}
+                      onClick={async () => {
+                        setRevealing(true)
+                        try { await revealAnywayFn({ entryDate: entry.date }) }
+                        catch { /* will retry */ }
+                        setRevealing(false)
+                      }}
+                      className="rounded-2xl px-5 py-2 text-xs font-bold text-white transition-all active:scale-95 disabled:opacity-50"
+                      style={{ background: '#2D5A3D' }}
+                    >
+                      {revealing ? '…' : 'Reveal Anyway'}
+                    </button>
+                  </div>
+                </div>
+              )
+            }
+            if (iSubmitted && !partnerSubmitted) {
+              // I submitted, partner hasn't — waiting card
+              return (
+                <div className="rounded-xl px-4 py-5 flex flex-col items-center gap-2 border border-dashed"
+                  style={{ borderColor: '#C9BFA8' }}>
+                  <p className="text-sm" style={{ color: '#7A7268' }}>
+                    Waiting for {partnerName}…
+                  </p>
+                  <p className="text-xs" style={{ color: '#C9BFA8' }}>Their card will appear once they share</p>
+                </div>
+              )
+            }
+            return null
+          })()}
 
           {/* Deletion consent UI — revealed entries only */}
           {entry.status === 'revealed' && (() => {

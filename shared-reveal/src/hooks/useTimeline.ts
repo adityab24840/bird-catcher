@@ -23,10 +23,11 @@ export function useTimeline(pairId: string | null): TimelineState {
       return
     }
 
+    // Include one_submitted so today's pending entry shows in timeline.
     // No orderBy — avoids composite index requirement. Sort client-side (max 20 docs).
     const q = query(
       collection(db, `pairs/${pairId}/entries`),
-      where('status', '==', 'revealed'),
+      where('status', 'in', ['revealed', 'one_submitted']),
       limit(20)
     )
 
