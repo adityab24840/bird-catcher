@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ThemeToggle from '../components/ThemeToggle'
+import BookCover from '../components/BookCover'
 import { doc, onSnapshot, collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../firebase/config'
@@ -985,6 +986,7 @@ export default function TimelinePage() {
   const navigate = useNavigate()
   const { pulling, distance } = usePullToRefresh(refresh)
 
+  const [coverDone, setCoverDone] = useState(false)
   const [memberDocs, setMemberDocs] = useState<Record<string, UserDoc>>({})
   const [view, setView] = useState<'journal' | 'calendar'>('journal')
   const [calMonth, setCalMonth] = useState<Date>(() => new Date())
@@ -1080,6 +1082,7 @@ export default function TimelinePage() {
 
   return (
     <div className="flex flex-col min-h-screen animate-pageIn">
+      {!coverDone && <BookCover onDone={() => setCoverDone(true)} />}
       {/* Header */}
       <header
         className="flex items-center justify-between px-5 pt-12 pb-4 shrink-0"
