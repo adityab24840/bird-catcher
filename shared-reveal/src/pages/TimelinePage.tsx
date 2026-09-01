@@ -294,26 +294,29 @@ function SubmissionCard({
 
       {/* Location */}
       {sub.location && (
-        <a
-          href={`https://www.google.com/maps?q=${sub.location.lat},${sub.location.lng}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block border-b last:border-0"
-          style={{ borderColor: '#F0EBE0' }}
-        >
-          <img
-            src={`https://staticmap.openstreetmap.de/staticmap.php?center=${sub.location.lat},${sub.location.lng}&zoom=14&size=400x160&markers=${sub.location.lat},${sub.location.lng},red-pushpin`}
-            alt="Location map"
-            style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
+        <div className="border-b last:border-0" style={{ borderColor: '#F0EBE0' }}>
+          <iframe
+            title="location map"
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${sub.location.lng - 0.012},${sub.location.lat - 0.008},${sub.location.lng + 0.012},${sub.location.lat + 0.008}&layer=mapnik&marker=${sub.location.lat},${sub.location.lng}`}
+            width="100%"
+            height="170"
+            loading="lazy"
+            style={{ display: 'block', border: 'none', pointerEvents: 'none' }}
           />
-          <div className="flex items-center gap-1.5 px-4 py-2" style={{ background: '#F8F5F0' }}>
+          <a
+            href={`https://www.google.com/maps?q=${sub.location.lat},${sub.location.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-4 py-2"
+            style={{ background: '#F8F5F0' }}
+          >
             <span className="text-sm">📍</span>
             <span className="text-[11px] font-medium" style={{ color: '#2D5A3D' }}>
               {sub.location.lat.toFixed(4)}, {sub.location.lng.toFixed(4)}
             </span>
-            <span className="text-[10px] ml-auto" style={{ color: '#C9BFA8' }}>tap to open ↗</span>
-          </div>
-        </a>
+            <span className="text-[10px] ml-auto" style={{ color: '#C9BFA8' }}>open in maps ↗</span>
+          </a>
+        </div>
       )}
 
       {/* Song embed */}
