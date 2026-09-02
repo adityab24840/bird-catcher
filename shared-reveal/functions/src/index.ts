@@ -12,7 +12,10 @@ if (process.env.FUNCTIONS_EMULATOR) {
   process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080'
 }
 
-initializeApp({ projectId: process.env.GCLOUD_PROJECT ?? 'birds-eye-c09ff' })
+initializeApp({
+  projectId: process.env.GCLOUD_PROJECT,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+})
 
 // Best-effort push notification — never throws, never blocks the caller's response.
 async function sendPush(token: string, title: string, body: string): Promise<void> {
