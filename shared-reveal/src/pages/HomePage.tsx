@@ -1557,17 +1557,6 @@ export default function HomePage() {
           </svg>
           <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Stats</span>
         </button>
-        <button
-          onClick={() => navigate('/export')}
-          className="flex-1 flex flex-col items-center pt-3 pb-1 gap-1"
-          style={{ color: '#4A5C4A' }}
-        >
-          <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
-            <path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M5 20h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-          <span className="text-[9px] tracking-[0.15em] uppercase font-semibold">Export</span>
-        </button>
       </nav>
 
       {/* Sign-out confirmation sheet */}
