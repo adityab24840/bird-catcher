@@ -47,13 +47,13 @@ test.fail(
         async ({ emulatorUrl }: { emulatorUrl: string }) => {
           const { initializeApp, getApps } = await import('firebase/app')
           const { getAuth, connectAuthEmulator } = await import('firebase/auth')
-          const app = getApps()[0] ?? initializeApp({ projectId: 'birds-eye-c09ff' })
+          const app = getApps()[0] ?? initializeApp({ projectId: process.env.VITE_FIREBASE_PROJECT_ID ?? process.env.FIREBASE_PROJECT_ID })
           const auth = getAuth(app)
           if (!(auth as any)._delegate?.emulatorConfig) {
             connectAuthEmulator(auth, emulatorUrl, { disableWarnings: true })
           }
         },
-        { emulatorUrl: 'http://127.0.0.1:9099' },
+        { emulatorUrl: `http://${process.env.VITE_FIREBASE_AUTH_EMULATOR_HOST ?? '127.0.0.1:9099'}` },
       )
       await pageC.waitForURL(/\/pair-setup/, { timeout: 10_000 })
       await pageC.getByRole('textbox').fill(code ?? '')

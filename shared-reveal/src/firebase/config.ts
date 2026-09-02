@@ -69,7 +69,10 @@ if (import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST) {
     `http://${import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST}`,
     { disableWarnings: true }
   )
-  connectFirestoreEmulator(db, '127.0.0.1', 8080)
-  connectFunctionsEmulator(functions, '127.0.0.1', 5001)
-  connectStorageEmulator(storage, '127.0.0.1', 9199)
+  const [fsHost, fsPort] = (import.meta.env.VITE_FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080').split(':')
+  connectFirestoreEmulator(db, fsHost, Number(fsPort))
+  const [fnHost, fnPort] = (import.meta.env.VITE_FUNCTIONS_EMULATOR_HOST ?? '127.0.0.1:5001').split(':')
+  connectFunctionsEmulator(functions, fnHost, Number(fnPort))
+  const [stHost, stPort] = (import.meta.env.VITE_STORAGE_EMULATOR_HOST ?? '127.0.0.1:9199').split(':')
+  connectStorageEmulator(storage, stHost, Number(stPort))
 }
